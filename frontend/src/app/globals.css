@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Markdown preview prose styles */
+.markdown-preview {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #111827;
+}
+.dark .markdown-preview { color: #e2e8f0; }
+.markdown-preview h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+  color: #111827;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+}
+.dark .markdown-preview h1 { color: #f1f5f9; border-bottom-color: #334155; }
+.markdown-preview h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 1.1rem 0 0.35rem;
+  color: #111827;
+}
+.dark .markdown-preview h2 { color: #f1f5f9; }
+.markdown-preview h3 {
+  font-size: 0.975rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+  color: #374151;
+}
+.dark .markdown-preview h3 { color: #94a3b8; }
+.markdown-preview p { margin: 0 0 0.65rem; }
+.markdown-preview ul, .markdown-preview ol { padding-left: 1.4rem; margin: 0 0 0.65rem; }
+.markdown-preview li { margin-bottom: 0.2rem; }
+.markdown-preview strong { font-weight: 600; color: #111827; }
+.dark .markdown-preview strong { color: #f1f5f9; }
+.markdown-preview em { font-style: italic; }
+.markdown-preview hr { border: none; border-top: 1px solid #e5e7eb; margin: 1rem 0; }
+.dark .markdown-preview hr { border-top-color: #334155; }
+.markdown-preview code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.85em;
+  background: #f3f4f6;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: #374151;
+}
+.dark .markdown-preview code { background: #1e293b; color: #94a3b8; }
+.markdown-preview pre {
+  background: #f3f4f6;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0 0 0.65rem;
+}
+.dark .markdown-preview pre { background: #1e293b; }
+.markdown-preview pre code { background: none; padding: 0; font-size: 0.875em; }
+.markdown-preview blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 0.9rem;
+  margin: 0 0 0.65rem;
+  color: #6b7280;
+}
+.dark .markdown-preview blockquote { border-left-color: #475569; color: #94a3b8; }
+.markdown-preview a { color: #2563eb; text-decoration: underline; }
+.dark .markdown-preview a { color: #60a5fa; }
