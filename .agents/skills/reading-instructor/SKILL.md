@@ -5,40 +5,25 @@ description: Manages German reading practice, generating paragraphs from web res
 
 # Reading Instructor Skill
 
-Use this skill when the user asks to "practice reading".
+Use this skill when the user asks to "practice reading" or create a new reading session.
 
-## 1. Preparation & Source Retrieval
-- **Case A: User provides a paragraph or a URL link**:
-  1. Retrieve the text content (if a URL, fetch content using reading/browsing tools).
-  2. Analyze the text and break it down into vocabulary words.
-  3. Filter vocabulary: Skip all A1 level words (e.g. *ich*, *du*, *arbeiten*, *sein*). For all remaining words, trigger the `vocabulary-instructor` capture workflow (assigning CEFR levels; routing level <= B1 to `inbox/` and B2+ to `complicated/`).
-  4. Use this text as the reading practice text.
-- **Case B: User asks generally**:
-  1. Retrieve the current topic and target CEFR level from `/mnt/d/german/.agents/learning-context.md`.
-  2. Perform a web search to find recent German articles/news w.r.t. the topic (focusing on professional software engineering).
-  3. Draft/retrieve 1-2 paragraphs in German targeted at the B1 level (aim for **250–350 words**).
-  4. Generate the corresponding audio read-out-loud file for the drafted text using the TTS helper script:
-     `/mnt/d/german/.venv/bin/python /mnt/d/german/.agents/skills/speaking-instructor/scripts/generate_tts.py "Clean Text (without [[]] brackets)" "/mnt/d/german/speaking/YYYYMMDD_kebab-case-topic-name.mp3"`
-  5. Analyze this text, extract non-A1 vocabularies, and route/save them following the `vocabulary-instructor` capture workflow.
+## 1. Preparation & Generation Workflow
+1. Retrieve target level and current topic from Grist using the `get_learning_context` tool.
+2. Search the web for a recent, interesting German-language article or topic related to the learning context (professional software engineering focus).
+3. Draft 1-2 paragraphs of German text (aim for 250–350 words) appropriate for the target CEFR level.
+4. Generate exactly 5 comprehension questions in German about the text.
+5. Create a new reading practice entry in Grist using the `upsert_reading_practice` tool with:
+   - `topic`: Descriptive topic title
+   - `germanText`: The full German text paragraphs
+   - `questionsJson`: JSON string array of 5 questions (e.g. `["Frage 1?", "Frage 2?", ...]`)
+   - `status`: `pending_user`
+   - `date`: Today's date (YYYY-MM-DD)
+   - `audioFileId`: ""
+   - `userAnswersJson`: `[]`
+   - `correctionsJson`: `""`
+6. Present the topic, full German text, and the 5 questions to the user in the UI/chat.
 
-## 2. Note Creation
-1. Create a new note under the `reading/` directory named: `reading/YYYYMMDD_kebab-case-topic-name.md`.
-2. Add YAML frontmatter:
-   ```yaml
-   ---
-   date: YYYY-MM-DD
-   type: reading
-   tags: []
-   ---
-   ```
-3. Insert the drafted 1-2 paragraphs.
-4. Embed the generated audio file at the top of the note (or immediately below the title) using Obsidian link syntax: `![[speaking/YYYYMMDD_kebab-case-topic-name.mp3]]` so it is audible/playable directly in the note.
-5. Add **at least 5 comprehension questions** at the bottom of the note (in German).
-6. In chat, ask the user to read the note, draft answers to the questions fully in German, and reply when they are finished.
-
-## 3. Evaluation & Correction Workflow
-Once the user confirms they have finished:
-1. Open the reading note and append the user's answers.
-2. Go through the answers and:
-   - Evaluate if the content of the answer is factually correct based on the reading text.
-   - Write grammatical corrections and stylistic improvements directly below each answer in the note.
+## 2. Evaluation Workflow
+When the user submits answers (Grist status is `pending_evaluation` or when evaluated):
+1. Evaluate the 5 user answers. Format the evaluation feedback as a structured JSON array string matching the questions index (containing keys `question`, `userAnswer`, `evaluation`, `correction`, and `explanation`).
+2. Write it to Grist via `upsert_reading_practice` and set `status` to `evaluated`.
