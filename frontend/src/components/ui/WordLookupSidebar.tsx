@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getVocabularyByWord, createVocabulary } from "@/lib/grist";
-import { buildVocabVariations, findGermanInfinitive } from "@/lib/german";
 import type { Vocabulary } from "@/lib/types";
 
 interface WordLookupSidebarProps {
@@ -10,7 +9,7 @@ interface WordLookupSidebarProps {
   word: string;
   sentence: string;
   onClose: () => void;
-  onWordAdded?: () => void; // Optional callback to trigger list refresh in parent page
+  onWordAdded?: () => void;
 }
 
 export function WordLookupSidebar({
@@ -20,7 +19,6 @@ export function WordLookupSidebar({
   onClose,
   onWordAdded,
 }: WordLookupSidebarProps) {
-  const [infinitive, setInfinitive] = useState("");
   const [vocabItem, setVocabItem] = useState<Vocabulary | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -33,16 +31,12 @@ export function WordLookupSidebar({
       setLoading(true);
       setAdded(false);
       setVocabItem(null);
-
-      // Reconstruct separable verb or base infinitive
-      const resolvedInfinitive = findGermanInfinitive(word, sentence);
-      setInfinitive(resolvedInfinitive);
-
       try {
-        const item = await getVocabularyByWord(buildVocabVariations(word, sentence));
+        // word is already the Gemini-resolved canonical form
+        const item = await getVocabularyByWord([word]);
         setVocabItem(item);
       } catch (err) {
-        console.error("Failed to check vocabulary word:", err);
+        console.error("Failed to fetch vocabulary word:", err);
       } finally {
         setLoading(false);
       }
@@ -51,13 +45,14 @@ export function WordLookupSidebar({
     lookup();
   }, [isOpen, word, sentence]);
 
+
   async function handleAddToQueue() {
-    if (!infinitive) return;
+    if (!word) return;
 
     setAdding(true);
     try {
       await createVocabulary({
-        word: infinitive,
+        word: word,
         type: "new",
         level: "B1",
         meanings: "",
@@ -117,11 +112,6 @@ export function WordLookupSidebar({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100">{vocabItem.fields.word}</h3>
-                  {infinitive !== word.toLowerCase() && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">
-                      Parsed infinitive of "{word}"
-                    </span>
-                  )}
                 </div>
                 <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded">
                   {vocabItem.fields.level} | {vocabItem.fields.type}
@@ -204,7 +194,7 @@ export function WordLookupSidebar({
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Word Not Found</h3>
                 <p className="text-sm text-gray-500 dark:text-slate-400 px-4 leading-relaxed">
-                  "{infinitive}" is not yet in your German vocabulary database.
+                  "{word}" is not yet in your German vocabulary database.
                 </p>
               </div>
 

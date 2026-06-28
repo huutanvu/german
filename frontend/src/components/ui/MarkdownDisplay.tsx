@@ -143,20 +143,10 @@ function WordSpan({
       // Step 1: Gemini resolves the canonical form
       const canonical = await resolveWordWithGemini(word, sentence);
 
-      // Step 2: Build Grist search variants
-      const bare = canonical.replace(/^(der|die|das|den|dem|des)\s+/i, "");
-      const cap = bare.charAt(0).toUpperCase() + bare.slice(1);
-      const variations = Array.from(new Set([
-        canonical, canonical.toLowerCase(),
-        bare, bare.toLowerCase(), cap,
-        ...["der", "die", "das"].map(a => `${a} ${bare}`),
-        ...["der", "die", "das"].map(a => `${a} ${cap}`),
-      ]));
-
-      const item = await getVocabularyByWord(variations);
+      // Step 2: Look up in Grist using exactly what Gemini returned
+      const item = await getVocabularyByWord([canonical]);
 
       if (item) {
-        // Found — open sidebar immediately
         onWordLookup(canonical, sentence);
         setOpen(false);
         setStatus("idle");
