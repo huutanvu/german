@@ -23,6 +23,7 @@ export function Navbar() {
     { href: "/vocabulary", label: t("Vocabulary", "Từ vựng") },
     { href: "/writing", label: t("Writing", "Luyện viết") },
     { href: "/reading", label: t("Reading", "Luyện đọc") },
+    { href: "/grammar", label: t("Grammar", "Ngữ pháp") },
     { href: "/speaking", label: t("Speaking", "Luyện nói") },
   ];
 

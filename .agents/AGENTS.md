@@ -89,6 +89,18 @@ Tracks speaking and pronunciation sessions.
 - `status` (Choice: pending_recording, pending_assessment, assessed)
 - `date` (Text: YYYY-MM-DD)
 
+### Table 7: `GrammarPractice`
+Tracks grammar and declension drill sessions.
+- `id` (Integer): Auto-incremented row ID
+- `topic` (Text): Grammar topic
+- `description` (Text): Short grammar guidelines/explanation in English
+- `questionsJson` (Text): JSON array of 15 grammar questions with increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc. Each question object matches the schema: `{"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}`
+- `userAnswersJson` (Text): User's answers
+- `correctionsJson` (Text): Evaluation details in English
+- `correctionsJson_vn` (Text): Evaluation details in Vietnamese
+- `status` (Choice: pending_user, evaluated)
+- `date` (Text: YYYY-MM-DD)
+
 ---
 
 ## 2. MCP Server Tools

@@ -182,6 +182,23 @@ const tablesToCreate = [
       },
     ],
   },
+  {
+    tables: [
+      {
+        id: 'GrammarPractice',
+        columns: [
+          { id: 'topic', fields: { type: 'Text', label: 'Topic' } },
+          { id: 'description', fields: { type: 'Text', label: 'Description' } },
+          { id: 'questionsJson', fields: { type: 'Text', label: 'Questions JSON' } },
+          { id: 'userAnswersJson', fields: { type: 'Text', label: 'User Answers JSON' } },
+          { id: 'correctionsJson', fields: { type: 'Text', label: 'Corrections JSON' } },
+          { id: 'correctionsJson_vn', fields: { type: 'Text', label: 'Corrections JSON (VN)' } },
+          { id: 'status', fields: { type: 'Choice', label: 'Status', widgetOptions: JSON.stringify({ choices: ['pending_user', 'evaluated'] }) } },
+          { id: 'date', fields: { type: 'Text', label: 'Date' } },
+        ],
+      },
+    ],
+  },
 ];
 
 async function main() {

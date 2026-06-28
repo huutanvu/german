@@ -71,6 +71,17 @@ export interface ReadingPracticeFields {
   date: string;
 }
 
+export interface GrammarPracticeFields {
+  topic: string;
+  description: string;
+  questionsJson: string;
+  userAnswersJson: string;
+  correctionsJson: string;
+  correctionsJson_vn?: string;
+  status: 'pending_user' | 'evaluated';
+  date: string;
+}
+
 export interface SpeakingPracticeFields {
   topic: string;
   targetText: string;
@@ -91,6 +102,7 @@ export type Vocabulary = GristRecord<VocabularyFields>;
 export type VocabularyReview = GristRecord<VocabularyReviewFields>;
 export type WritingPractice = GristRecord<WritingPracticeFields>;
 export type ReadingPractice = GristRecord<ReadingPracticeFields>;
+export type GrammarPractice = GristRecord<GrammarPracticeFields>;
 export type SpeakingPractice = GristRecord<SpeakingPracticeFields>;
 
 // ─── Publit.io Types ────────────────────────────────────────────

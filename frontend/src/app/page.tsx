@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getLearningContext, listVocabulary, listReviews, listWritingPractices, listReadingPractices, listSpeakingPractices } from "@/lib/grist";
+import { getLearningContext, listVocabulary, listReviews, listWritingPractices, listReadingPractices, listGrammarPractices, listSpeakingPractices } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 import type { LearningContext, VocabularyFields } from "@/lib/types";
 
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [pendingReviews, setPendingReviews] = useState(0);
   const [activeWriting, setActiveWriting] = useState<string>("No active topic");
   const [activeReading, setActiveReading] = useState<string>("No active passage");
+  const [activeGrammar, setActiveGrammar] = useState<string>("No active drill");
   const [activeSpeaking, setActiveSpeaking] = useState<string>("No active prompt");
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +44,10 @@ export default function Dashboard() {
         const readingRes = await listReadingPractices();
         const activeR = readingRes.records.find(r => r.fields.status !== "evaluated");
         if (activeR) setActiveReading(activeR.fields.topic);
+
+        const grammarRes = await listGrammarPractices();
+        const activeG = grammarRes.records.find(r => r.fields.status !== "evaluated");
+        if (activeG) setActiveGrammar(activeG.fields.topic);
 
         const speakingRes = await listSpeakingPractices();
         const activeS = speakingRes.records.find(r => r.fields.status !== "assessed");
@@ -111,7 +116,7 @@ export default function Dashboard() {
       </div>
 
       {/* Activity Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Vocab review card */}
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 flex flex-col justify-between shadow-sm transition-transform hover:scale-[1.01]">
           <div>
@@ -189,6 +194,32 @@ export default function Dashboard() {
             className="w-full text-center py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold rounded text-sm transition-colors"
           >
             {t("Start Reading", "Bắt đầu đọc")}
+          </Link>
+        </div>
+
+        {/* Grammar practice card */}
+        <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 flex flex-col justify-between shadow-sm transition-transform hover:scale-[1.01]">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {t("Grammar Drills", "Luyện ngữ pháp")}
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">
+              {t("Active Drill", "Bài tập hoạt động")}: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeGrammar}</span>
+            </p>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
+              {t(
+                "Test grammar skills on cases, declension endings, prepositions and conjugations with instant grading.",
+                "Luyện tập ngữ pháp về các cách, giới từ, chia động từ và nhận kết quả tức thì."
+              )}
+            </p>
+          </div>
+          <Link
+            href="/grammar"
+            className="w-full text-center py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold rounded text-sm transition-colors"
+          >
+            {t("Start Grammar", "Bắt đầu ngữ pháp")}
           </Link>
         </div>
 

@@ -7,12 +7,14 @@ import type {
   VocabularyReviewFields,
   WritingPracticeFields,
   ReadingPracticeFields,
+  GrammarPracticeFields,
   SpeakingPracticeFields,
   LearningContext,
   Vocabulary,
   VocabularyReview,
   WritingPractice,
   ReadingPractice,
+  GrammarPractice,
   SpeakingPractice,
 } from "./types";
 
@@ -259,6 +261,35 @@ export async function upsertReadingPractice(
   });
 }
 
+// ─── Grammar Practice ────────────────────────────────────────────
+
+export async function listGrammarPractices(
+  status?: string
+): Promise<GristResponse<GrammarPracticeFields>> {
+  const filters: Record<string, string[]> = {};
+  if (status) filters.status = [status];
+
+  const query = Object.keys(filters).length
+    ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
+    : "";
+
+  return gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
+}
+
+export async function upsertGrammarPractice(
+  topic: string,
+  fields: Partial<GrammarPracticeFields>
+): Promise<void> {
+  await gristWrite("PUT", "/tables/GrammarPractice/records", {
+    records: [
+      {
+        require: { topic },
+        fields: { ...fields, date: new Date().toISOString().split("T")[0] },
+      },
+    ],
+  });
+}
+
 // ─── Speaking Practice ───────────────────────────────────────────
 
 export async function listSpeakingPractices(
@@ -322,6 +353,12 @@ export async function updateSpeakingPractice(
 export async function getReadingPractice(id: number): Promise<ReadingPractice | null> {
   const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
   const res = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
+  return res.records.length > 0 ? res.records[0] : null;
+}
+
+export async function getGrammarPractice(id: number): Promise<GrammarPractice | null> {
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
+  const res = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }
 
