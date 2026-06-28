@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import { getLearningContext, listVocabulary, listReviews, upsertReview } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 import type { Vocabulary, VocabularyReview } from "@/lib/types";
@@ -125,25 +126,47 @@ export default function VocabularyPage() {
 
               return (
                 <div key={word.id} className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{word.fields.word}</h3>
-                    <div className="flex gap-2">
-                      <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-xs font-semibold rounded">
-                        {word.fields.level}
-                      </span>
-                      <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded">
-                        {grammarVal}
-                      </span>
-                    </div>
-                  </div>
+                    <Popover.Root>
+                      <Popover.Trigger asChild>
+                        <button
+                          className="p-1.5 text-gray-400 hover:text-amber-500 dark:text-slate-500 dark:hover:text-amber-400 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title={t("Show Definition", "Xem định nghĩa")}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                        </button>
+                      </Popover.Trigger>
+                      <Popover.Portal>
+                        <Popover.Content
+                          side="bottom"
+                          align="end"
+                          sideOffset={6}
+                          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl p-4 z-50 flex flex-col gap-3 max-w-[320px] font-sans text-xs outline-none text-gray-900 dark:text-gray-100"
+                        >
+                          <div className="flex gap-2">
+                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[10px] font-bold rounded">
+                              {word.fields.level}
+                            </span>
+                            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[10px] font-bold rounded">
+                              {grammarVal}
+                            </span>
+                          </div>
 
-                  <p className="text-sm text-gray-500 dark:text-slate-400 mb-4 italic">
-                    {t("Meaning", "Ý nghĩa")}: {meaningVal}
-                  </p>
+                          <p className="text-sm font-medium italic text-gray-800 dark:text-gray-200">
+                            {t("Meaning", "Ý nghĩa")}: {meaningVal}
+                          </p>
 
-                  <div className="text-xs text-gray-500 dark:text-slate-400 space-y-1 bg-gray-50 dark:bg-slate-950 p-3 rounded mb-4 border border-gray-100 dark:border-slate-800">
-                    <div><strong>{t("Daily Use", "Sử dụng hàng ngày")}</strong>: {dailyUseVal}</div>
-                    <div><strong>{t("Professional Use", "Sử dụng công việc")}</strong>: {professionalUseVal}</div>
+                          <div className="text-[11px] text-gray-500 dark:text-slate-400 space-y-1.5 bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800">
+                            <div><strong>{t("Daily Use", "Sử dụng hàng ngày")}</strong>: {dailyUseVal}</div>
+                            <div><strong>{t("Professional Use", "Sử dụng công việc")}</strong>: {professionalUseVal}</div>
+                          </div>
+                          <Popover.Arrow className="fill-white dark:fill-slate-900 stroke-gray-200 dark:stroke-slate-800" />
+                        </Popover.Content>
+                      </Popover.Portal>
+                    </Popover.Root>
                   </div>
 
                   {pendingReview ? (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getSpeakingPractice, upsertSpeakingPractice } from "@/lib/grist";
+import { getSpeakingPractice, upsertSpeakingPractice, listSpeakingPractices, createSpeakingPractice, updateSpeakingPractice } from "@/lib/grist";
 import type { SpeakingPractice } from "@/lib/types";
 import { MarkdownDisplay } from "@/components/ui/MarkdownDisplay";
 import { WordLookupSidebar } from "@/components/ui/WordLookupSidebar";
@@ -12,10 +12,12 @@ export default function SpeakingDetail({ id }: { id: number }) {
   const router = useRouter();
 
   const [exercise, setExercise] = useState<SpeakingPractice | null>(null);
+  const [attempts, setAttempts] = useState<SpeakingPractice[]>([]);
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -49,6 +51,12 @@ export default function SpeakingDetail({ id }: { id: number }) {
       setAudioUrl(null);
       setAudioBlob(null);
       setRecording(false);
+
+      // Fetch all attempts for this topic
+      const listRes = await listSpeakingPractices();
+      const topicAttempts = listRes.records.filter(r => r.fields.topic === ex.fields.topic);
+      topicAttempts.sort((a, b) => a.id - b.id);
+      setAttempts(topicAttempts);
     } catch (err) {
       console.error("Failed to load speaking exercise details:", err);
     } finally {
@@ -118,7 +126,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
       const uploadData = await uploadRes.json();
       const fileId = uploadData.id;
 
-      await upsertSpeakingPractice(exercise.fields.topic, {
+      await updateSpeakingPractice(exercise.id, {
         userAudioFileId: fileId,
         status: "pending_assessment",
       });
@@ -128,6 +136,33 @@ export default function SpeakingDetail({ id }: { id: number }) {
       console.error("Failed to submit speaking exercise:", err);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleRetry() {
+    if (!exercise) return;
+    try {
+      setRetrying(true);
+      const newAttempt = await createSpeakingPractice(
+        exercise.fields.topic,
+        exercise.fields.targetText,
+        {
+          status: "pending_recording",
+          userAudioFileId: "",
+          transcript: "",
+          grammarFeedback: "",
+          grammarFeedback_vn: "",
+          pronunciationFeedback: "",
+          pronunciationFeedback_vn: "",
+          targetAudioFileId: exercise.fields.targetAudioFileId || "",
+          score: 0,
+        }
+      );
+      router.push(`/speaking/${newAttempt.id}`);
+    } catch (err) {
+      console.error("Failed to create retry speaking practice:", err);
+    } finally {
+      setRetrying(false);
     }
   }
 
@@ -189,10 +224,46 @@ export default function SpeakingDetail({ id }: { id: number }) {
         </button>
 
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-slate-800 pb-4">
-          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 leading-snug">{exercise.fields.topic}</h1>
-          <span className="text-xs text-gray-400 font-mono block mt-1">{exercise.fields.date}</span>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 dark:border-slate-800 pb-4 gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 leading-snug">{exercise.fields.topic}</h1>
+            <span className="text-xs text-gray-400 font-mono block mt-1">{exercise.fields.date}</span>
+          </div>
+          {exercise.fields.status === "assessed" && (
+            <button
+              onClick={handleRetry}
+              disabled={retrying}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-lg text-xs cursor-pointer shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5 self-start md:self-center"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3 3L22 4" />
+              </svg>
+              {retrying ? t("Creating attempt...", "Đang tạo lượt mới...") : t("Retry / Try Again", "Luyện lại / Thử lại")}
+            </button>
+          )}
         </div>
+
+        {/* Attempts Tabs */}
+        {attempts.length > 1 && (
+          <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-slate-800 pb-3">
+            {attempts.map((att, idx) => {
+              const isActive = att.id === id;
+              return (
+                <button
+                  key={att.id}
+                  onClick={() => router.push(`/speaking/${att.id}`)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {t("Attempt", "Lần")} {idx + 1}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Target text to read */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">

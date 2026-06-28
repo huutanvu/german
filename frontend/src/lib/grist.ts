@@ -285,7 +285,38 @@ export async function upsertSpeakingPractice(
     ],
   });
 }
-
+export async function createSpeakingPractice(
+  topic: string,
+  targetText: string,
+  fields: Partial<SpeakingPracticeFields>
+): Promise<SpeakingPractice> {
+  const res = await gristWrite<{ records: any[] }>("POST", "/tables/SpeakingPractice/records", {
+    records: [
+      {
+        fields: {
+          topic,
+          targetText,
+          ...fields,
+          date: new Date().toISOString().split("T")[0],
+        },
+      },
+    ],
+  });
+  return res.records[0] as SpeakingPractice;
+}
+export async function updateSpeakingPractice(
+  id: number,
+  fields: Partial<SpeakingPracticeFields>
+): Promise<void> {
+  await gristWrite("PATCH", "/tables/SpeakingPractice/records", {
+    records: [
+      {
+        id,
+        fields,
+      },
+    ],
+  });
+}
 export async function getReadingPractice(id: number): Promise<ReadingPractice | null> {
   const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
   const res = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);

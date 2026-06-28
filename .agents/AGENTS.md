@@ -158,6 +158,7 @@ The application is structured to be mobile-first and responsive:
 - **Dynamic Route Detail Pane**: Clicking an item in a list routes directly to its corresponding dynamic route (`/reading/[id]`, `/writing/[id]`, `/speaking/[id]`). This allows full-width focus suitable for mobile screens and shareable URLs.
 - **Interactive Reading**: Text passages split into sentence and word tokens. Clicking a word opens a responsive `@radix-ui/react-popover` containing inline links to lookup definitions or add the word to Grist.
 - **Side Drawer Info**: Sidebar lookup panel draws from the right to display full definitions and grammar contexts.
+- **Component Library Usage**: Prefer utilizing existing components from libraries (e.g., `@radix-ui/react-popover`) rather than writing new custom layouts or overlays from scratch.
 
 ---
 
