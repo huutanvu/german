@@ -158,11 +158,11 @@ export default function SpeakingDetail({ id }: { id: number }) {
   }
 
   const userRecordingUrl = exercise.fields.userAudioFileId
-    ? `https://media.publit.io/file/${exercise.fields.userAudioFileId}.webm`
+    ? `https://media.publit.io/file/german/${exercise.fields.userAudioFileId}.webm`
     : null;
 
   const targetAudioUrl = exercise.fields.targetAudioFileId
-    ? `https://media.publit.io/file/${exercise.fields.targetAudioFileId}.mp3`
+    ? `https://media.publit.io/file/german/${exercise.fields.targetAudioFileId}.mp3`
     : null;
 
   // Resolve pronunciation and grammar feedback JSON/text columns based on language setting
