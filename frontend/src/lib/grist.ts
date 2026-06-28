@@ -328,25 +328,44 @@ Response format: { "resolvedWord": "..." }`;
 }
 
 export async function lookupAndAddWord(rawWord: string, contextSentence: string): Promise<Vocabulary | null> {
-
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
 
-  const prompt = `You are a German language teacher. Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
-Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs (e.g. if the clicked word is "hole" and context is "Ich hole dich ab", the resolved word must be "abholen").
+  const prompt = `You are a German language teacher fluent in both English and Vietnamese.
+Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
+Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs.
+
+Format guidelines:
+- For "dailyUse", provide a natural German example sentence showing daily context use of the resolved word, followed by its English translation in brackets. Format: "German sentence [English translation]"
+- For "dailyUse_vn", provide the EXACT same German example sentence as dailyUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
+- For "professionalUse", provide a German example sentence showing professional software engineering/agile context use, followed by its English translation in brackets. Format: "German sentence [English translation]"
+- For "professionalUse_vn", provide the EXACT same German example sentence as professionalUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
+
+CRITICAL: The sentence before the brackets MUST be the original German sentence in all four columns. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
+
+Example:
+If German sentence is "Ich gehe heute einkaufen.", then:
+- dailyUse: "Ich gehe heute einkaufen. [I am going shopping today.]"
+- dailyUse_vn: "Ich gehe heute einkaufen. [Hôm nay tôi đi mua sắm.]"
 
 Provide the response as a JSON object matching this schema:
 {
   "word": "resolved base word/phrase (e.g. 'abholen' or 'das Treffen')",
   "meanings": "English translations/meanings separated by commas",
+  "meanings_vn": "Vietnamese translations/meanings separated by commas",
   "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
-  "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc.",
-  "dailyUse": "A natural German example sentence showing daily context use of the resolved word, accompanied by its English translation in brackets",
-  "professionalUse": "A German example sentence showing professional software engineering/agile context use, accompanied by its English translation in brackets",
-  "tips": "Grammatical cases, prepositions, or tips",
-  "caution": "Common pitfalls or false friends"
+  "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc. in English",
+  "grammar_vn": "Grammatical notes (articles, plurals, auxiliary verbs, etc.) explained in Vietnamese",
+  "dailyUse": "German sentence [English translation]",
+  "dailyUse_vn": "German sentence [Vietnamese translation]",
+  "professionalUse": "German sentence [English translation]",
+  "professionalUse_vn": "German sentence [Vietnamese translation]",
+  "tips": "Grammatical cases, prepositions, or tips in English",
+  "tips_vn": "Grammatical cases, prepositions, or tips explained in Vietnamese",
+  "caution": "Common pitfalls or false friends in English",
+  "caution_vn": "Common pitfalls or false friends explained in Vietnamese"
 }`;
 
   const replyText = await callGemini(apiKey, {
@@ -359,13 +378,19 @@ Provide the response as a JSON object matching this schema:
   const gristRes = await createVocabulary({
     word: parsed.word,
     meanings: parsed.meanings,
+    meanings_vn: parsed.meanings_vn,
     level: parsed.level || "B1",
     type: "new",
     grammar: parsed.grammar,
+    grammar_vn: parsed.grammar_vn,
     dailyUse: parsed.dailyUse,
+    dailyUse_vn: parsed.dailyUse_vn,
     professionalUse: parsed.professionalUse,
+    professionalUse_vn: parsed.professionalUse_vn,
     tips: parsed.tips,
+    tips_vn: parsed.tips_vn,
     caution: parsed.caution,
+    caution_vn: parsed.caution_vn,
     isProcessed: true,
   });
 

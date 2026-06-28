@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listReadingPractices } from "@/lib/grist";
+import { useLanguage } from "@/lib/language-context";
 import type { ReadingPractice } from "@/lib/types";
 
 type SortField = "date-desc" | "date-asc" | "status";
 
 export default function ReadingDashboard() {
+  const { language, t } = useLanguage();
   const [exercises, setExercises] = useState<ReadingPractice[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortField>("date-desc");
@@ -44,7 +46,7 @@ export default function ReadingDashboard() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
-        <div className="animate-pulse text-lg font-medium">Loading reading dashboard...</div>
+        <div className="animate-pulse text-lg font-medium">{t("Loading reading dashboard...", "Đang tải danh sách bài đọc...")}</div>
       </div>
     );
   }
@@ -55,16 +57,16 @@ export default function ReadingDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-200 dark:border-slate-800 pb-5 gap-4">
           <div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">Reading Practices</h1>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">{t("Reading Practices", "Luyện đọc hiểu")}</h1>
             <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-              Select an article to practice reading comprehension, listening, and lookup definitions.
+              {t("Select an article to practice reading comprehension, listening, and lookup definitions.", "Chọn một bài đọc để luyện đọc hiểu, nghe và tra cứu từ vựng.")}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <input
               type="text"
-              placeholder="Search passages..."
+              placeholder={t("Search passages...", "Tìm bài đọc...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="text-xs px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded text-gray-900 dark:text-gray-100 focus:outline-none min-w-[200px]"
@@ -75,9 +77,9 @@ export default function ReadingDashboard() {
               onChange={(e) => setSortBy(e.target.value as SortField)}
               className="text-xs px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded text-gray-700 dark:text-gray-300 font-semibold focus:outline-none"
             >
-              <option value="date-desc">Newest First</option>
-              <option value="date-asc">Oldest First</option>
-              <option value="status">Status</option>
+              <option value="date-desc">{t("Newest First", "Mới nhất trước")}</option>
+              <option value="date-asc">{t("Oldest First", "Cũ nhất trước")}</option>
+              <option value="status">{t("Status", "Trạng thái")}</option>
             </select>
           </div>
         </div>
@@ -85,7 +87,7 @@ export default function ReadingDashboard() {
         {/* Grid List */}
         {filteredExercises.length === 0 ? (
           <div className="py-20 text-center text-sm text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800">
-            No reading practices found.
+            {t("No reading practices found.", "Không tìm thấy bài luyện đọc nào.")}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -113,7 +115,11 @@ export default function ReadingDashboard() {
                             : "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300"
                         }`}
                       >
-                        {hasCorrection ? "Feedback Available" : isPending ? "Pending AI" : "Unanswered"}
+                        {hasCorrection
+                          ? t("Feedback Available", "Có nhận xét")
+                          : isPending
+                          ? t("Pending AI", "Đang chờ chấm")
+                          : t("Unanswered", "Chưa trả lời")}
                       </span>
                     </div>
 
@@ -123,7 +129,7 @@ export default function ReadingDashboard() {
                   </div>
 
                   <div className="flex items-center justify-end text-[11px] font-bold text-gray-400 group-hover:text-blue-500 transition-colors pt-4 border-t border-gray-50 dark:border-slate-800/40">
-                    Open Practice
+                    {t("Open Practice", "Mở luyện tập")}
                     <svg className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                     </svg>

@@ -19,14 +19,20 @@ export interface LearningContextFields {
 export interface VocabularyFields {
   word: string;
   meanings: string;
+  meanings_vn?: string;
   level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   type: 'new' | 'revised' | 'permanent' | 'complicated';
   correctCount: number;
   grammar: string;
+  grammar_vn?: string;
   dailyUse: string;
+  dailyUse_vn?: string;
   professionalUse: string;
+  professionalUse_vn?: string;
   tips: string;
+  tips_vn?: string;
   caution: string;
+  caution_vn?: string;
   context?: string;
   isProcessed?: boolean;
   updatedAt?: string;
@@ -37,6 +43,7 @@ export interface VocabularyReviewFields {
   userSentence: string;
   correctedSentence: string;
   correctionFeedback: string;
+  correctionFeedback_vn?: string;
   status: 'pending_correction' | 'corrected' | 'failed';
   reviewedAt?: string;
 }
@@ -47,6 +54,7 @@ export interface WritingPracticeFields {
   userParagraph: string;
   correctedParagraph: string;
   correctionsJson: string; // JSON detail breakdown
+  correctionsJson_vn?: string;
   status: 'pending_user' | 'pending_correction' | 'corrected';
   date: string;
 }
@@ -58,6 +66,7 @@ export interface ReadingPracticeFields {
   questionsJson: string; // JSON array of 5 questions
   userAnswersJson: string; // JSON array of user answers
   correctionsJson: string; // JSON grading/feedback
+  correctionsJson_vn?: string; // JSON grading/feedback in Vietnamese
   status: 'pending_user' | 'pending_evaluation' | 'evaluated';
   date: string;
 }
@@ -68,7 +77,9 @@ export interface SpeakingPracticeFields {
   userAudioFileId: string; // Publitio file ID
   transcript: string;
   grammarFeedback: string;
+  grammarFeedback_vn?: string;
   pronunciationFeedback: string;
+  pronunciationFeedback_vn?: string;
   targetAudioFileId: string; // Publitio file ID
   score: number;
   status: 'pending_recording' | 'pending_assessment' | 'assessed';

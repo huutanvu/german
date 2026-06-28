@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { getVocabularyByWord, lookupAndAddWord, resolveWordWithGemini } from "@/lib/grist";
 import { detectSeparablePrefix } from "@/lib/german";
+import { useLanguage } from "@/lib/language-context";
 
 // Tokens to highlight across the whole text when a word is looked up
 interface HighlightState {
@@ -150,6 +151,7 @@ function WordSpan({
   onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void;
   isHighlighted: boolean;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "resolving" | "processing">("idle");
 
@@ -215,17 +217,17 @@ function WordSpan({
               onClick={handleLookup}
               className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200 rounded font-semibold transition-colors cursor-pointer"
             >
-              Lookup
+              {t("Lookup", "Tra cứu")}
             </button>
           )}
           {status === "resolving" && (
             <div className="py-2 px-3 text-center text-gray-400 animate-pulse font-medium">
-              Looking up...
+              {t("Looking up...", "Đang tra cứu...")}
             </div>
           )}
           {status === "processing" && (
             <div className="py-2 px-3 text-center text-gray-400 animate-pulse font-medium">
-              Generating...
+              {t("Generating...", "Đang tạo...")}
             </div>
           )}
           <Popover.Arrow className="fill-white dark:fill-slate-900 stroke-gray-200 dark:stroke-slate-800 stroke-[1px]" />

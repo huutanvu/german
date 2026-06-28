@@ -3,15 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
+import { useLanguage } from "@/lib/language-context";
 import { useState } from "react";
-
-const links = [
-  { href: "/", label: "Dashboard" },
-  { href: "/vocabulary", label: "Vocabulary" },
-  { href: "/writing", label: "Writing" },
-  { href: "/reading", label: "Reading" },
-  { href: "/speaking", label: "Speaking" },
-];
 
 const THEME_ICONS: Record<string, string> = {
   light: "L",
@@ -22,7 +15,16 @@ const THEME_ICONS: Record<string, string> = {
 export function Navbar() {
   const pathname = usePathname();
   const { theme, cycle } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const links = [
+    { href: "/", label: t("Dashboard", "Bảng điều khiển") },
+    { href: "/vocabulary", label: t("Vocabulary", "Từ vựng") },
+    { href: "/writing", label: t("Writing", "Luyện viết") },
+    { href: "/reading", label: t("Reading", "Luyện đọc") },
+    { href: "/speaking", label: t("Speaking", "Luyện nói") },
+  ];
 
   return (
     <nav className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -31,7 +33,7 @@ export function Navbar() {
           {/* Left: logo + desktop nav */}
           <div className="flex items-center gap-4 sm:gap-6">
             <Link href="/" className="text-sm font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-              German Learning Vault
+              {t("German Learning Vault", "Học tiếng Đức")}
             </Link>
             {/* Desktop nav links */}
             <div className="hidden sm:flex gap-1">
@@ -59,6 +61,15 @@ export function Navbar() {
 
           {/* Right side controls */}
           <div className="flex items-center gap-1.5">
+            {/* Language toggle */}
+            <button
+              onClick={() => setLanguage(language === "en" ? "vi" : "en")}
+              className="px-2 py-1 rounded text-xs font-mono font-bold transition-colors cursor-pointer text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              title={t("Switch to Vietnamese", "Chuyển sang tiếng Anh")}
+            >
+              {language === "en" ? "EN" : "VI"}
+            </button>
+
             {/* Theme toggle */}
             <button
               onClick={cycle}

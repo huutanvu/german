@@ -6,6 +6,7 @@ import { getSpeakingPractice, upsertSpeakingPractice } from "@/lib/grist";
 import type { SpeakingPractice } from "@/lib/types";
 import { MarkdownDisplay } from "@/components/ui/MarkdownDisplay";
 import { WordLookupSidebar } from "@/components/ui/WordLookupSidebar";
+import { useLanguage } from "@/lib/language-context";
 
 export default function SpeakingDetail({ id }: { id: number }) {
   const router = useRouter();
@@ -130,24 +131,26 @@ export default function SpeakingDetail({ id }: { id: number }) {
     }
   }
 
+  const { language, t } = useLanguage();
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
-        <div className="animate-pulse text-lg font-medium">Loading speaking module...</div>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-955 text-gray-700 dark:text-gray-200">
+        <div className="animate-pulse text-lg font-medium">{t("Loading speaking module...", "Đang tải bài nói...")}</div>
       </div>
     );
   }
 
   if (!exercise) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-955 text-gray-700 dark:text-gray-200">
         <div className="text-center space-y-3">
-          <p className="text-lg font-semibold">Speaking module not found.</p>
+          <p className="text-lg font-semibold">{t("Speaking module not found.", "Không tìm thấy bài nói.")}</p>
           <button
             onClick={() => router.push("/speaking")}
             className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded text-xs font-bold cursor-pointer"
           >
-            Back to Dashboard
+            {t("Back to Dashboard", "Quay lại Bảng điều khiển")}
           </button>
         </div>
       </div>
@@ -162,6 +165,15 @@ export default function SpeakingDetail({ id }: { id: number }) {
     ? `https://media.publit.io/file/${exercise.fields.targetAudioFileId}.mp3`
     : null;
 
+  // Resolve pronunciation and grammar feedback JSON/text columns based on language setting
+  const pronunciationFeedbackVal = language === "vi" && exercise.fields.pronunciationFeedback_vn
+    ? exercise.fields.pronunciationFeedback_vn
+    : exercise.fields.pronunciationFeedback;
+
+  const grammarFeedbackVal = language === "vi" && exercise.fields.grammarFeedback_vn
+    ? exercise.fields.grammarFeedback_vn
+    : exercise.fields.grammarFeedback;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -173,7 +185,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Speaking Dashboard
+          {t("Back to Speaking Dashboard", "Quay lại Trang nói")}
         </button>
 
         {/* Header */}
@@ -184,14 +196,18 @@ export default function SpeakingDetail({ id }: { id: number }) {
 
         {/* Target text to read */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-2">Target Reading Text</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-2">
+            {t("Target Reading Text", "Đoạn văn đọc mục tiêu")}
+          </span>
           <MarkdownDisplay content={exercise.fields.targetText} onWordLookup={handleWordLookup} />
         </div>
 
         {/* Recorder or displays depending on status */}
         {exercise.fields.status === "pending_recording" ? (
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Voice Recorder</h3>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+              {t("Voice Recorder", "Ghi âm giọng nói")}
+            </h3>
             
             <div className="flex items-center gap-3">
               {recording ? (
@@ -199,31 +215,35 @@ export default function SpeakingDetail({ id }: { id: number }) {
                   onClick={stopRecording}
                   className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded cursor-pointer transition-colors"
                 >
-                  Stop Recording
+                  {t("Stop Recording", "Dừng ghi âm")}
                 </button>
               ) : (
                 <button
                   onClick={startRecording}
                   className="px-5 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 text-xs font-bold rounded cursor-pointer transition-colors"
                 >
-                  Start Recording
+                  {t("Start Recording", "Bắt đầu ghi âm")}
                 </button>
               )}
               {recording && (
-                <span className="text-xs text-red-500 animate-pulse font-semibold">Recording your voice...</span>
+                <span className="text-xs text-red-500 animate-pulse font-semibold">
+                  {t("Recording your voice...", "Đang ghi âm giọng nói...")}
+                </span>
               )}
             </div>
 
             {audioUrl && (
               <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-200 dark:border-slate-800 space-y-3">
-                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block">Preview Recording</span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block">
+                  {t("Preview Recording", "Nghe thử bản ghi âm")}
+                </span>
                 <audio controls src={audioUrl} className="w-full h-8" />
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-sm disabled:opacity-50 cursor-pointer transition-colors"
                 >
-                  {submitting ? "Uploading recording..." : "Submit Recording"}
+                  {submitting ? t("Uploading recording...", "Đang tải bản ghi âm lên...") : t("Submit Recording", "Nộp bản ghi âm")}
                 </button>
               </div>
             )}
@@ -234,14 +254,19 @@ export default function SpeakingDetail({ id }: { id: number }) {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
               {userRecordingUrl && (
                 <div>
-                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Your Submission Recording</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                    {t("Your Submission Recording", "Bản ghi âm đã nộp của bạn")}
+                  </span>
                   <audio controls src={userRecordingUrl} className="w-full h-8 mt-1" />
                 </div>
               )}
 
               {exercise.fields.status === "pending_assessment" && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs p-3 rounded border border-amber-200 dark:border-amber-900/40 font-medium italic">
-                  Submitted. Waiting for offline AI voice assessment...
+                  {t(
+                    "Submitted. Waiting for offline AI voice assessment...",
+                    "Đã nộp. Đang chờ AI đánh giá phát âm..."
+                  )}
                 </div>
               )}
             </div>
@@ -250,12 +275,14 @@ export default function SpeakingDetail({ id }: { id: number }) {
             {exercise.fields.status === "assessed" && (
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs space-y-6">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider border-b border-gray-100 dark:border-slate-800 pb-2">
-                  Pronunciation Assessment
+                  {t("Pronunciation Assessment", "Đánh giá phát âm")}
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Fluency Score</span>
+                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                      {t("Fluency Score", "Điểm trôi chảy")}
+                    </span>
                     <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                       {exercise.fields.score} / 100
                     </div>
@@ -263,33 +290,41 @@ export default function SpeakingDetail({ id }: { id: number }) {
                   
                   {targetAudioUrl && (
                     <div>
-                      <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Reference Pronunciation</span>
+                      <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                        {t("Reference Pronunciation", "Phát âm mẫu tham khảo")}
+                      </span>
                       <audio controls src={targetAudioUrl} className="w-full h-8 mt-1" />
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Your Speech Transcript</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                    {t("Your Speech Transcript", "Bản dịch chữ giọng nói của bạn")}
+                  </span>
                   <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-100 dark:border-slate-800">
                     <MarkdownDisplay content={exercise.fields.transcript} onWordLookup={handleWordLookup} />
                   </div>
                 </div>
 
-                {exercise.fields.pronunciationFeedback && (
+                {pronunciationFeedbackVal && (
                   <div>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Pronunciation Feedback</span>
+                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                      {t("Pronunciation Feedback", "Nhận xét phát âm chi tiết")}
+                    </span>
                     <div className="bg-red-50/20 dark:bg-red-950/10 p-4 rounded border border-red-200 dark:border-red-900/30">
-                      <MarkdownDisplay content={exercise.fields.pronunciationFeedback} onWordLookup={handleWordLookup} />
+                      <MarkdownDisplay content={pronunciationFeedbackVal} onWordLookup={handleWordLookup} />
                     </div>
                   </div>
                 )}
 
-                {exercise.fields.grammarFeedback && (
+                {grammarFeedbackVal && (
                   <div>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Grammar Corrections</span>
+                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                      {t("Grammar Corrections", "Sửa lỗi ngữ pháp")}
+                    </span>
                     <div className="bg-blue-50/20 dark:bg-blue-950/10 p-4 rounded border border-blue-200 dark:border-blue-900/30">
-                      <MarkdownDisplay content={exercise.fields.grammarFeedback} onWordLookup={handleWordLookup} />
+                      <MarkdownDisplay content={grammarFeedbackVal} onWordLookup={handleWordLookup} />
                     </div>
                   </div>
                 )}

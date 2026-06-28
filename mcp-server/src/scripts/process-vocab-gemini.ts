@@ -63,44 +63,80 @@ async function fetchUnprocessed() {
 
 // ─── Process single word via Gemini ────────────────────────────────
 async function askGemini(rawWord: string, contextSentence: string): Promise<any> {
-  const prompt = `You are a German language teacher. Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
-Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs (e.g. if the clicked word is "hole" and context is "Ich hole dich ab", the resolved word must be "abholen").
+  const prompt = `You are a German language teacher fluent in both English and Vietnamese.
+Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
+Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs.
+
+Format guidelines:
+- For "dailyUse", provide a natural German example sentence showing daily context use of the resolved word, followed by its English translation in brackets. Format: "German sentence [English translation]"
+- For "dailyUse_vn", provide the EXACT same German example sentence as dailyUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
+- For "professionalUse", provide a German example sentence showing professional software engineering/agile context use, followed by its English translation in brackets. Format: "German sentence [English translation]"
+- For "professionalUse_vn", provide the EXACT same German example sentence as professionalUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
+
+CRITICAL: The sentence before the brackets MUST be the original German sentence in all four columns. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
+
+Example:
+If German sentence is "Ich gehe heute einkaufen.", then:
+- dailyUse: "Ich gehe heute einkaufen. [I am going shopping today.]"
+- dailyUse_vn: "Ich gehe heute einkaufen. [Hôm nay tôi đi mua sắm.]"
 
 Provide the response as a JSON object matching this schema:
 {
   "word": "resolved base word/phrase (e.g. 'abholen' or 'das Treffen')",
   "meanings": "English translations/meanings separated by commas",
+  "meanings_vn": "Vietnamese translations/meanings separated by commas",
   "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
-  "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc.",
-  "dailyUse": "A natural German example sentence showing daily context use of the resolved word, accompanied by its English translation in brackets",
-  "professionalUse": "A German example sentence showing professional software engineering/agile context use, accompanied by its English translation in brackets",
-  "tips": "Grammatical cases, associated prepositions, or study tips",
-  "caution": "Pitfalls, false friends, capitalization rules, or common errors"
+  "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc. in English",
+  "grammar_vn": "Grammatical notes (articles, plurals, auxiliary verbs, etc.) explained in Vietnamese",
+  "dailyUse": "German sentence [English translation]",
+  "dailyUse_vn": "German sentence [Vietnamese translation]",
+  "professionalUse": "German sentence [English translation]",
+  "professionalUse_vn": "German sentence [Vietnamese translation]",
+  "tips": "Grammatical cases, prepositions, or tips in English",
+  "tips_vn": "Grammatical cases, prepositions, or tips explained in Vietnamese",
+  "caution": "Common pitfalls or false friends in English",
+  "caution_vn": "Common pitfalls or false friends explained in Vietnamese"
 }`;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+  const models = [
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+  ];
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Gemini API call failed: ${res.status} ${text}`);
+  let lastError: Error | null = null;
+  for (const model of models) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json() as any;
+        const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (replyText) {
+          return JSON.parse(replyText);
+        }
+        lastError = new Error(`Empty response from ${model}`);
+      } else {
+        const errText = await res.text();
+        console.warn(`Gemini model ${model} failed (${res.status}): ${errText}`);
+        lastError = new Error(`${model}: ${res.status} ${errText}`);
+      }
+    } catch (e: any) {
+      console.warn(`Error calling ${model}:`, e);
+      lastError = e;
+    }
   }
 
-  const data = await res.json() as any;
-  const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!replyText) {
-    throw new Error('Empty response from Gemini API');
-  }
-
-  return JSON.parse(replyText);
+  throw lastError ?? new Error('All Gemini models failed');
 }
 
 // ─── Update Grist ──────────────────────────────────────────────────

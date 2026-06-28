@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getLearningContext, listVocabulary, listReviews, listWritingPractices, listReadingPractices, listSpeakingPractices } from "@/lib/grist";
+import { useLanguage } from "@/lib/language-context";
 import type { LearningContext, VocabularyFields } from "@/lib/types";
 
 export default function Dashboard() {
+  const { language, t } = useLanguage();
   const [context, setContext] = useState<LearningContext | null>(null);
   const [vocabStats, setVocabStats] = useState({ total: 0, new: 0, revised: 0, permanent: 0, complicated: 0 });
   const [pendingReviews, setPendingReviews] = useState(0);
@@ -58,13 +60,14 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-900 text-gray-700 dark:text-gray-200">
-        <div className="animate-pulse text-lg font-medium">Loading Learning Vault...</div>
+        <div className="animate-pulse text-lg font-medium">{t("Loading Learning Vault...", "Đang tải dữ liệu...")}</div>
       </div>
     );
   }
 
   const level = context?.fields.targetLevel || "B1";
   const topic = context?.fields.currentTopic || "General Software Engineering";
+  
   const env = context?.fields.professionalEnvironment || "Software Engineer";
 
   return (
@@ -73,17 +76,19 @@ export default function Dashboard() {
       <div className="rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-6 mb-8 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Welcome to your Learning Vault</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {t("Welcome to your Learning Vault", "Chào mừng bạn đến với kho học tập")}
+            </h1>
             <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-              Context: {env} | Target Level: {level}
+              {t("Context", "Ngữ cảnh")}: {env} | {t("Target Level", "Trình độ mục tiêu")}: {level}
             </p>
           </div>
           <div className="flex gap-2">
             <span className="px-3 py-1 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded text-xs font-semibold">
-              Topic: {topic}
+              {t("Topic", "Chủ đề")}: {topic}
             </span>
             <span className="px-3 py-1 bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 rounded text-xs font-semibold">
-              {vocabStats.permanent} / {vocabStats.total} Mastered
+              {vocabStats.permanent} / {vocabStats.total} {t("Mastered", "Đã thuộc")}
             </span>
           </div>
         </div>
@@ -92,11 +97,11 @@ export default function Dashboard() {
       {/* Vocabulary Mastery Breakdown */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
         {[
-          { label: "Total Vocabulary", val: vocabStats.total, color: "border-gray-200 dark:border-slate-800" },
-          { label: "New Words", val: vocabStats.new, color: "border-blue-200 dark:border-blue-900/40" },
-          { label: "Revised Needed", val: vocabStats.revised, color: "border-amber-200 dark:border-amber-900/40" },
-          { label: "Mastered (Permanent)", val: vocabStats.permanent, color: "border-emerald-200 dark:border-emerald-950/40" },
-          { label: "Complicated (B2+)", val: vocabStats.complicated, color: "border-indigo-200 dark:border-indigo-950/40" },
+          { label: t("Total Vocabulary", "Tổng số từ"), val: vocabStats.total, color: "border-gray-200 dark:border-slate-800" },
+          { label: t("New Words", "Từ mới"), val: vocabStats.new, color: "border-blue-200 dark:border-blue-900/40" },
+          { label: t("Revised Needed", "Cần ôn tập"), val: vocabStats.revised, color: "border-amber-200 dark:border-amber-900/40" },
+          { label: t("Mastered (Permanent)", "Đã thuộc lòng"), val: vocabStats.permanent, color: "border-emerald-200 dark:border-emerald-950/40" },
+          { label: t("Complicated (B2+)", "Từ khó (B2+)"), val: vocabStats.complicated, color: "border-indigo-200 dark:border-indigo-950/40" },
         ].map((stat, i) => (
           <div key={i} className={`bg-white dark:bg-slate-900 p-4 rounded-lg border ${stat.color} text-center shadow-sm`}>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stat.val}</div>
@@ -111,22 +116,27 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 flex flex-col justify-between shadow-sm transition-transform hover:scale-[1.01]">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Vocabulary Review</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {t("Vocabulary Review", "Ôn tập từ vựng")}
+              </h2>
               {pendingReviews > 0 && (
                 <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300 text-xs font-semibold rounded">
-                  {pendingReviews} Pending
+                  {pendingReviews} {t("Pending", "Chờ duyệt")}
                 </span>
               )}
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-              Practice active recall by writing custom sentences with your active vocabulary words. AI corrections are done offline.
+              {t(
+                "Practice active recall by writing custom sentences with your active vocabulary words. AI corrections are done offline.",
+                "Luyện tập nhớ lại bằng cách viết câu với các từ vựng đang học. Sửa lỗi AI sẽ được xử lý offline."
+              )}
             </p>
           </div>
           <Link
             href="/vocabulary"
             className="w-full text-center py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold rounded text-sm transition-colors"
           >
-            Review Vocab
+            {t("Review Vocab", "Ôn tập")}
           </Link>
         </div>
 
@@ -134,20 +144,25 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 flex flex-col justify-between shadow-sm transition-transform hover:scale-[1.01]">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Writing Practice</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {t("Writing Practice", "Luyện viết")}
+              </h2>
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">
-              Current Topic: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeWriting}</span>
+              {t("Current Topic", "Chủ đề hiện tại")}: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeWriting}</span>
             </p>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-              Draft formal paragraphs matching software engineering environments and submit for line-by-line feedback.
+              {t(
+                "Draft formal paragraphs matching software engineering environments and submit for line-by-line feedback.",
+                "Viết các đoạn văn tương ứng với môi trường phát triển phần mềm và nhận phản hồi chi tiết từ AI."
+              )}
             </p>
           </div>
           <Link
             href="/writing"
             className="w-full text-center py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold rounded text-sm transition-colors"
           >
-            Start Writing
+            {t("Start Writing", "Bắt đầu viết")}
           </Link>
         </div>
 
@@ -155,20 +170,25 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 flex flex-col justify-between shadow-sm transition-transform hover:scale-[1.01]">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Reading Comprehension</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {t("Reading Comprehension", "Luyện đọc hiểu")}
+              </h2>
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">
-              Active Passage: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeReading}</span>
+              {t("Active Passage", "Bài đọc hoạt động")}: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeReading}</span>
             </p>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-              Read advanced tech articles, play back audio recordings, and complete comprehension questions.
+              {t(
+                "Read advanced tech articles, play back audio recordings, and complete comprehension questions.",
+                "Đọc các bài báo kỹ thuật, nghe audio phát âm chuẩn và trả lời câu hỏi đọc hiểu."
+              )}
             </p>
           </div>
           <Link
             href="/reading"
             className="w-full text-center py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold rounded text-sm transition-colors"
           >
-            Start Reading
+            {t("Start Reading", "Bắt đầu đọc")}
           </Link>
         </div>
 
@@ -176,20 +196,25 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 flex flex-col justify-between shadow-sm transition-transform hover:scale-[1.01]">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Speaking & Pronunciation</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {t("Speaking & Pronunciation", "Luyện nói & phát âm")}
+              </h2>
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">
-              Active Prompt: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeSpeaking}</span>
+              {t("Active Prompt", "Đoạn nói hoạt động")}: <span className="font-semibold text-gray-900 dark:text-gray-200">{activeSpeaking}</span>
             </p>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-              Record reading paragraphs out loud in the browser. Submit to get transcript verification and phonetics reviews.
+              {t(
+                "Record reading paragraphs out loud in the browser. Submit to get transcript verification and phonetics reviews.",
+                "Ghi âm giọng đọc các đoạn văn trong trình duyệt. Gửi để kiểm tra độ chính xác phát âm."
+              )}
             </p>
           </div>
           <Link
             href="/speaking"
             className="w-full text-center py-2 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-semibold rounded text-sm transition-colors"
           >
-            Start Speaking
+            {t("Start Speaking", "Bắt đầu nói")}
           </Link>
         </div>
       </div>
