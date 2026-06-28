@@ -170,8 +170,8 @@ export default function WritingDetailPage() {
                 {exercise.fields.correctionsJson && (
                   <div>
                     <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Detailed Analysis</span>
-                    <div className="text-xs text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-100 dark:border-slate-800 whitespace-pre-wrap font-mono leading-relaxed">
-                      {exercise.fields.correctionsJson}
+                    <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-100 dark:border-slate-800">
+                      <MarkdownDisplay content={exercise.fields.correctionsJson} onWordLookup={handleWordLookup} />
                     </div>
                   </div>
                 )}

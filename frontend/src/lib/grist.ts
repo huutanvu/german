@@ -94,8 +94,9 @@ export async function listVocabulary(
   return gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
 }
 
-export async function getVocabularyByWord(word: string): Promise<Vocabulary | null> {
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ word: [word] }))}`;
+export async function getVocabularyByWord(word: string | string[]): Promise<Vocabulary | null> {
+  const words = Array.isArray(word) ? word : [word];
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ word: words }))}`;
   const res = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }

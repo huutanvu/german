@@ -278,8 +278,8 @@ export default function SpeakingDetailPage() {
                 {exercise.fields.pronunciationFeedback && (
                   <div>
                     <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Pronunciation Feedback</span>
-                    <div className="text-xs text-gray-800 dark:text-gray-300 bg-red-50/20 dark:bg-red-950/10 p-4 rounded border border-red-200 dark:border-red-900/30 whitespace-pre-wrap leading-relaxed">
-                      {exercise.fields.pronunciationFeedback}
+                    <div className="bg-red-50/20 dark:bg-red-950/10 p-4 rounded border border-red-200 dark:border-red-900/30">
+                      <MarkdownDisplay content={exercise.fields.pronunciationFeedback} onWordLookup={handleWordLookup} />
                     </div>
                   </div>
                 )}
@@ -287,8 +287,8 @@ export default function SpeakingDetailPage() {
                 {exercise.fields.grammarFeedback && (
                   <div>
                     <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">Grammar Corrections</span>
-                    <div className="text-xs text-gray-800 dark:text-gray-300 bg-blue-50/20 dark:bg-blue-950/10 p-4 rounded border border-blue-200 dark:border-blue-900/30 whitespace-pre-wrap leading-relaxed">
-                      {exercise.fields.grammarFeedback}
+                    <div className="bg-blue-50/20 dark:bg-blue-950/10 p-4 rounded border border-blue-200 dark:border-blue-900/30">
+                      <MarkdownDisplay content={exercise.fields.grammarFeedback} onWordLookup={handleWordLookup} />
                     </div>
                   </div>
                 )}

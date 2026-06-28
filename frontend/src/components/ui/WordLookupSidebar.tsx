@@ -38,8 +38,16 @@ export function WordLookupSidebar({
       const resolvedInfinitive = findGermanInfinitive(word, sentence);
       setInfinitive(resolvedInfinitive);
 
+      const cleanWord = word.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "");
+      const lowerWord = cleanWord.toLowerCase();
+      const capWord = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase();
+      const lowerInfinitive = resolvedInfinitive.toLowerCase();
+      const capInfinitive = resolvedInfinitive.charAt(0).toUpperCase() + resolvedInfinitive.slice(1).toLowerCase();
+
+      const variations = Array.from(new Set([lowerWord, capWord, lowerInfinitive, capInfinitive]));
+
       try {
-        const item = await getVocabularyByWord(resolvedInfinitive);
+        const item = await getVocabularyByWord(variations);
         setVocabItem(item);
       } catch (err) {
         console.error("Failed to check vocabulary word:", err);

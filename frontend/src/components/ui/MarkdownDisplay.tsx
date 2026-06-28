@@ -85,24 +85,33 @@ function TextBlock({
   return (
     <>
       {sentences.map((sentence, sIdx) => {
-        // Split sentence into words and spaces
-        const tokens = sentence.split(/(\s+)/);
+        // Split sentence by "**" to detect bold sections
+        const boldParts = sentence.split(/\*\*/);
 
         return (
           <span key={sIdx} className="sentence-block">
-            {tokens.map((token, tIdx) => {
-              const isWord = /\w+/.test(token);
-              if (!isWord) {
-                return <span key={tIdx}>{token}</span>;
-              }
+            {boldParts.map((part, pIdx) => {
+              const isBold = pIdx % 2 !== 0;
+              const tokens = part.split(/(\s+)/);
 
               return (
-                <WordSpan
-                  key={tIdx}
-                  word={token}
-                  sentence={sentence}
-                  onWordLookup={onWordLookup}
-                />
+                <span key={pIdx} className={isBold ? "font-bold text-gray-950 dark:text-white" : ""}>
+                  {tokens.map((token, tIdx) => {
+                    const isWord = /\w+/.test(token);
+                    if (!isWord) {
+                      return <span key={tIdx}>{token}</span>;
+                    }
+
+                    return (
+                      <WordSpan
+                        key={tIdx}
+                        word={token}
+                        sentence={sentence}
+                        onWordLookup={onWordLookup}
+                      />
+                    );
+                  })}
+                </span>
               );
             })}
           </span>
@@ -125,7 +134,7 @@ function WordSpan({
   const [status, setStatus] = useState<"checking" | "exists" | "missing" | "added">("checking");
   const [adding, setAdding] = useState(false);
 
-  const cleanWord = word.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase();
+  const cleanWord = word.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "");
 
   async function handleOpenChange(isOpen: boolean) {
     setOpen(isOpen);
@@ -133,11 +142,17 @@ function WordSpan({
       setStatus("checking");
       const resolvedInfinitive = findGermanInfinitive(word, sentence);
 
-      try {
-        const item = await getVocabularyByWord(resolvedInfinitive);
-        const rawItem = resolvedInfinitive !== cleanWord ? await getVocabularyByWord(cleanWord) : null;
+      const lowerWord = cleanWord.toLowerCase();
+      const capWord = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase();
+      const lowerInfinitive = resolvedInfinitive.toLowerCase();
+      const capInfinitive = resolvedInfinitive.charAt(0).toUpperCase() + resolvedInfinitive.slice(1).toLowerCase();
 
-        if (item || rawItem) {
+      const variations = Array.from(new Set([lowerWord, capWord, lowerInfinitive, capInfinitive]));
+
+      try {
+        const item = await getVocabularyByWord(variations);
+
+        if (item) {
           setStatus("exists");
         } else {
           setStatus("missing");
