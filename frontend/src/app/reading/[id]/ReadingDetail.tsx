@@ -20,11 +20,15 @@ export default function ReadingDetail({ id }: { id: number }) {
   // Word lookup states
   const [lookupWord, setLookupWord] = useState("");
   const [lookupSentence, setLookupSentence] = useState("");
+  const [lookupClickedWord, setLookupClickedWord] = useState("");
+  const [lookupSeparablePrefix, setLookupSeparablePrefix] = useState<string | undefined>(undefined);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
 
-  function handleWordLookup(word: string, sentence: string) {
-    setLookupWord(word);
+  function handleWordLookup(canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) {
+    setLookupWord(canonical);
     setLookupSentence(sentence);
+    setLookupClickedWord(clickedWord);
+    setLookupSeparablePrefix(separablePrefix);
     setIsLookupOpen(true);
   }
 
@@ -278,6 +282,8 @@ export default function ReadingDetail({ id }: { id: number }) {
         isOpen={isLookupOpen}
         word={lookupWord}
         sentence={lookupSentence}
+        clickedWord={lookupClickedWord}
+        separablePrefix={lookupSeparablePrefix}
         onClose={() => setIsLookupOpen(false)}
       />
     </div>

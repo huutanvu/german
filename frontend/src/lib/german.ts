@@ -76,11 +76,6 @@ const ARTICLES = ["der", "die", "das", "den", "dem", "des"];
 
 /**
  * Builds a de-duped array of word variants to query Grist with.
- * Handles:
- *  - lowercase / capitalised forms of the clicked word
- *  - resolved infinitive forms
- *  - article-prefixed forms (e.g. "die Aufgaben", "das Treffen")
- *  - article-stripped forms (e.g. "die Aufgaben" -> "Aufgaben")
  */
 export function buildVocabVariations(clickedWord: string, sentence: string): string[] {
   const clean = clickedWord.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "");
@@ -93,7 +88,6 @@ export function buildVocabVariations(clickedWord: string, sentence: string): str
 
   const base = [lower, cap, lowerResolved, capResolved];
 
-  // Strip leading article if clicked word already has one (e.g. passed from Gemini result)
   const stripped = base.flatMap(v => {
     for (const art of ARTICLES) {
       if (v.toLowerCase().startsWith(art + " ")) {
@@ -104,11 +98,31 @@ export function buildVocabVariations(clickedWord: string, sentence: string): str
     return [];
   });
 
-  // Also add article-prefixed variants so "Aufgaben" matches "die Aufgaben"
   const articled = [cap, capResolved].flatMap(v =>
     ARTICLES.map(art => `${art} ${v}`)
   );
 
   return Array.from(new Set([...base, ...stripped, ...articled]));
+}
+
+/**
+ * Given a Gemini-resolved infinitive, detect whether it is a separable verb
+ * and return the prefix (e.g. "abholen" → "ab", "anrufen" → "an").
+ * Returns null for non-separable words.
+ */
+export function detectSeparablePrefix(infinitive: string): string | null {
+  const prefixes = [
+    "zusammen", "zurück", "weiter", "wider",
+    "ab", "an", "auf", "aus", "bei", "ein", "los", "mit", "nach",
+    "her", "hin", "vor", "weg", "zu", "über", "um", "unter", "durch",
+  ];
+  const lower = infinitive.toLowerCase();
+  for (const prefix of prefixes) {
+    // Must start with prefix + at least 3 more chars to be a real verb stem
+    if (lower.startsWith(prefix) && lower.length > prefix.length + 2) {
+      return prefix;
+    }
+  }
+  return null;
 }
 

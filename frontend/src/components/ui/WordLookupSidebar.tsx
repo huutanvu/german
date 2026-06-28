@@ -6,16 +6,49 @@ import type { Vocabulary } from "@/lib/types";
 
 interface WordLookupSidebarProps {
   isOpen: boolean;
-  word: string;
-  sentence: string;
+  word: string;           // canonical form from Gemini (e.g. "abholen", "die Aufgabe")
+  sentence: string;       // the sentence the user clicked in
+  clickedWord: string;    // the raw clicked token (e.g. "hole")
+  separablePrefix?: string; // e.g. "ab" if word is separable
   onClose: () => void;
   onWordAdded?: () => void;
+}
+
+/** Render a sentence with specific tokens highlighted in yellow. */
+function HighlightedSentence({
+  sentence,
+  tokensToHighlight,
+}: {
+  sentence: string;
+  tokensToHighlight: string[];
+}) {
+  const parts = sentence.split(/(\s+)/);
+  return (
+    <span>
+      {parts.map((part, i) => {
+        const clean = part.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase();
+        const highlighted = tokensToHighlight.includes(clean);
+        return highlighted ? (
+          <mark
+            key={i}
+            className="bg-yellow-200 dark:bg-yellow-700/60 text-yellow-900 dark:text-yellow-100 rounded px-0.5 not-italic"
+          >
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        );
+      })}
+    </span>
+  );
 }
 
 export function WordLookupSidebar({
   isOpen,
   word,
   sentence,
+  clickedWord,
+  separablePrefix,
   onClose,
   onWordAdded,
 }: WordLookupSidebarProps) {
@@ -23,6 +56,12 @@ export function WordLookupSidebar({
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+
+  // Tokens to highlight in the sentence (clicked word + separable prefix if any)
+  const highlightTokens = [
+    clickedWord.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase(),
+    ...(separablePrefix ? [separablePrefix.toLowerCase()] : []),
+  ];
 
   useEffect(() => {
     if (!isOpen || !word) return;
@@ -32,7 +71,6 @@ export function WordLookupSidebar({
       setAdded(false);
       setVocabItem(null);
       try {
-        // word is already the Gemini-resolved canonical form
         const item = await getVocabularyByWord([word]);
         setVocabItem(item);
       } catch (err) {
@@ -45,14 +83,12 @@ export function WordLookupSidebar({
     lookup();
   }, [isOpen, word, sentence]);
 
-
   async function handleAddToQueue() {
     if (!word) return;
-
     setAdding(true);
     try {
       await createVocabulary({
-        word: word,
+        word,
         type: "new",
         level: "B1",
         meanings: "",
@@ -76,14 +112,14 @@ export function WordLookupSidebar({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end font-sans">
-      {/* Backdrop overlay */}
+      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       />
 
-      {/* Drawer Container */}
-      <div className="relative w-full max-w-md h-full bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800 shadow-2xl flex flex-col z-10 transition-transform overflow-y-auto">
+      {/* Drawer */}
+      <div className="relative w-full max-w-md h-full bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800 shadow-2xl flex flex-col z-10 overflow-y-auto">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
           <div>
@@ -100,6 +136,21 @@ export function WordLookupSidebar({
           </button>
         </div>
 
+        {/* Sentence context — always shown */}
+        {sentence && (
+          <div className="px-6 pt-4 pb-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-gray-400 block mb-1.5">
+              From sentence
+            </span>
+            <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed italic border-l-2 border-yellow-400 pl-3">
+              <HighlightedSentence
+                sentence={sentence.trim()}
+                tokensToHighlight={highlightTokens}
+              />
+            </p>
+          </div>
+        )}
+
         {/* Content */}
         <div className="p-6 flex-1 space-y-6">
           {loading ? (
@@ -108,26 +159,20 @@ export function WordLookupSidebar({
             </div>
           ) : vocabItem ? (
             <div className="space-y-6">
-              {/* Word Title & level */}
+              {/* Word title & level */}
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100">{vocabItem.fields.word}</h3>
-                </div>
+                <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100">
+                  {vocabItem.fields.word}
+                </h3>
                 <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded">
                   {vocabItem.fields.level} | {vocabItem.fields.type}
                 </span>
               </div>
 
-              {/* Unprocessed state banner */}
+              {/* Unprocessed banner */}
               {!vocabItem.fields.meanings && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs p-4 rounded border border-amber-200 dark:border-amber-900/40 leading-relaxed font-medium">
                   This word is in your review queue. The AI instructor will generate definitions, examples, and grammatical tips during the next offline run.
-                  {vocabItem.fields.context && (
-                    <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-900/30">
-                      <span className="font-semibold text-amber-700 dark:text-amber-400 block mb-1">Sentence Context:</span>
-                      <p className="italic">"{vocabItem.fields.context}"</p>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -154,14 +199,12 @@ export function WordLookupSidebar({
               {/* Examples */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Example Sentences</h4>
-                
                 {vocabItem.fields.dailyUse && (
                   <div className="text-xs bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 space-y-1">
                     <span className="font-semibold text-gray-500 dark:text-slate-400">Daily context</span>
                     <p className="text-gray-900 dark:text-gray-200 italic">"{vocabItem.fields.dailyUse}"</p>
                   </div>
                 )}
-
                 {vocabItem.fields.professionalUse && (
                   <div className="text-xs bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 space-y-1">
                     <span className="font-semibold text-gray-500 dark:text-slate-400">Professional context</span>
@@ -179,7 +222,6 @@ export function WordLookupSidebar({
                       <p className="text-gray-700 dark:text-slate-300">{vocabItem.fields.tips}</p>
                     </div>
                   )}
-
                   {vocabItem.fields.caution && (
                     <div className="text-xs bg-red-50/50 dark:bg-red-950/10 p-3 rounded border border-red-200 dark:border-red-950/20">
                       <strong className="text-red-800 dark:text-red-300 block mb-1">Caution / Pitfall</strong>
@@ -194,10 +236,9 @@ export function WordLookupSidebar({
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Word Not Found</h3>
                 <p className="text-sm text-gray-500 dark:text-slate-400 px-4 leading-relaxed">
-                  "{word}" is not yet in your German vocabulary database.
+                  "{word}" is not yet in your vocabulary library.
                 </p>
               </div>
-
               {added ? (
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs p-3 rounded border border-emerald-200 dark:border-emerald-900/40 font-semibold italic">
                   Added to review queue! Detail contents will be generated offline.

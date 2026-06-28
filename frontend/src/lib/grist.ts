@@ -366,7 +366,6 @@ Provide the response as a JSON object matching this schema:
     professionalUse: parsed.professionalUse,
     tips: parsed.tips,
     caution: parsed.caution,
-    context: contextSentence,
     isProcessed: true,
   });
 
