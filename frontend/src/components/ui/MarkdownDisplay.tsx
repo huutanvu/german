@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { getVocabularyByWord, createVocabulary } from "@/lib/grist";
+import { getVocabularyByWord, createVocabulary, lookupAndAddWord } from "@/lib/grist";
 import { findGermanInfinitive } from "@/lib/german";
 
 interface MarkdownDisplayProps {
@@ -133,6 +133,7 @@ function WordSpan({
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"checking" | "exists" | "missing" | "added">("checking");
   const [adding, setAdding] = useState(false);
+  const [aiLookingUp, setAiLookingUp] = useState(false);
 
   const cleanWord = word.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "");
 
@@ -164,12 +165,32 @@ function WordSpan({
     }
   }
 
+  async function handleAiLookup() {
+    setAiLookingUp(true);
+    setStatus("checking");
+    try {
+      const newItem = await lookupAndAddWord(word, sentence);
+      if (newItem) {
+        setStatus("exists");
+        onWordLookup(newItem.fields.word, sentence);
+        setOpen(false);
+      } else {
+        setStatus("missing");
+      }
+    } catch (err) {
+      console.error("AI Lookup failed:", err);
+      setStatus("missing");
+    } finally {
+      setAiLookingUp(false);
+    }
+  }
+
   async function handleAddWord() {
     setAdding(true);
     try {
       // Save exact clicked word and full sentence context
       await createVocabulary({
-        word: cleanWord,
+        word: cleanWord.toLowerCase(),
         context: sentence.trim(),
         type: "new",
         level: "B1",
@@ -211,7 +232,7 @@ function WordSpan({
         >
           {status === "checking" && (
             <div className="py-2 text-center text-gray-400 animate-pulse font-medium">
-              Checking...
+              {aiLookingUp ? "AI processing..." : "Checking..."}
             </div>
           )}
 
@@ -228,18 +249,27 @@ function WordSpan({
           )}
 
           {status === "missing" && (
-            <button
-              onClick={handleAddWord}
-              disabled={adding}
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 rounded font-semibold transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {adding ? "Adding..." : "Add to Vocabulary"}
-            </button>
+            <>
+              <button
+                onClick={handleAiLookup}
+                disabled={aiLookingUp || adding}
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 rounded font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                AI Lookup & Save
+              </button>
+              <button
+                onClick={handleAddWord}
+                disabled={aiLookingUp || adding}
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded font-semibold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Queue for Review
+              </button>
+            </>
           )}
 
           {status === "added" && (
             <div className="px-3 py-2 text-emerald-600 dark:text-emerald-400 font-bold italic text-center">
-              Added context!
+              Added to review!
             </div>
           )}
           <Popover.Arrow className="fill-white dark:fill-slate-900 stroke-gray-200 dark:stroke-slate-800 stroke-[1px]" />

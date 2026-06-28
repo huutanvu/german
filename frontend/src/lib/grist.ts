@@ -261,3 +261,69 @@ export async function getSpeakingPractice(id: number): Promise<SpeakingPractice 
   const res = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }
+
+export async function lookupAndAddWord(rawWord: string, contextSentence: string): Promise<Vocabulary | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured on the server.");
+  }
+
+  const prompt = `You are a German language teacher. Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
+Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs (e.g. if the clicked word is "hole" and context is "Ich hole dich ab", the resolved word must be "abholen").
+
+Provide the response as a JSON object matching this schema:
+{
+  "word": "resolved base word/phrase (e.g. 'abholen' or 'das Treffen')",
+  "meanings": "English translations/meanings separated by commas",
+  "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
+  "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc.",
+  "dailyUse": "A natural German example sentence showing daily context use of the resolved word, accompanied by its English translation in brackets",
+  "professionalUse": "A German example sentence showing professional software engineering/agile context use, accompanied by its English translation in brackets",
+  "tips": "Grammatical cases, prepositions, or tips",
+  "caution": "Common pitfalls or false friends"
+}`;
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json" },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Gemini API call failed: ${res.status} ${text}`);
+  }
+
+  const data = await res.json() as any;
+  const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!replyText) {
+    throw new Error("Empty response from Gemini API");
+  }
+
+  const parsed = JSON.parse(replyText);
+
+  const gristRes = await createVocabulary({
+    word: parsed.word,
+    meanings: parsed.meanings,
+    level: parsed.level || "B1",
+    type: "new",
+    grammar: parsed.grammar,
+    dailyUse: parsed.dailyUse,
+    professionalUse: parsed.professionalUse,
+    tips: parsed.tips,
+    caution: parsed.caution,
+    context: contextSentence,
+    isProcessed: true,
+  });
+
+  if (gristRes.records && gristRes.records.length > 0) {
+    const newId = gristRes.records[0].id;
+    const itemsRes = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records?filter=${encodeURIComponent(JSON.stringify({ id: [newId] }))}`);
+    return itemsRes.records[0] || null;
+  }
+
+  return null;
+}
