@@ -22,6 +22,45 @@ const GRIST_KEY = process.env.GRIST_KEY ?? process.env.NEXT_PUBLIC_GRIST_KEY ?? 
 
 const base = `${GRIST_URL}/docs/${GRIST_DOC}`;
 
+// ---------------------------------------------------------------------------
+// Gemini helper with model fallback chain
+// ---------------------------------------------------------------------------
+const GEMINI_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+];
+
+async function callGemini(
+  apiKey: string,
+  body: object
+): Promise<string> {
+  let lastError: Error | null = null;
+  for (const model of GEMINI_MODELS) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json() as any;
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+      lastError = new Error(`Empty response from ${model}`);
+    } else {
+      const errText = await res.text();
+      console.warn(`Gemini model ${model} failed (${res.status}): ${errText}`);
+      lastError = new Error(`${model}: ${res.status} ${errText}`);
+    }
+  }
+  throw lastError ?? new Error("All Gemini models failed");
+}
+
+
+
 async function gristGet<T>(path: string): Promise<T> {
   const res = await fetch(`${base}${path}`, {
     headers: { Authorization: `Bearer ${GRIST_KEY}` },
@@ -262,7 +301,31 @@ export async function getSpeakingPractice(id: number): Promise<SpeakingPractice 
   return res.records.length > 0 ? res.records[0] : null;
 }
 
+export async function resolveWordWithGemini(clickedWord: string, contextSentence: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
+
+  const prompt = `You are a German linguistics expert. Given the German word "${clickedWord}" as it appears in the sentence: "${contextSentence}"
+
+Return ONLY the canonical dictionary form of this word as a JSON object:
+- Verb → infinitive (e.g. "abholen", "sein", "haben")
+- Noun → nominative singular with article (e.g. "die Aufgabe", "der Hund", "das Treffen")
+- Adjective/Adverb → base form (e.g. "schnell", "gut")
+- For separable verbs, reconstruct the full infinitive from the prefix at the end of the clause.
+
+Response format: { "resolvedWord": "..." }`;
+
+  const replyText = await callGemini(apiKey, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: "application/json" },
+  });
+
+  const parsed = JSON.parse(replyText);
+  return parsed.resolvedWord as string;
+}
+
 export async function lookupAndAddWord(rawWord: string, contextSentence: string): Promise<Vocabulary | null> {
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
@@ -283,25 +346,10 @@ Provide the response as a JSON object matching this schema:
   "caution": "Common pitfalls or false friends"
 }`;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json" },
-    }),
+  const replyText = await callGemini(apiKey, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: "application/json" },
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Gemini API call failed: ${res.status} ${text}`);
-  }
-
-  const data = await res.json() as any;
-  const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!replyText) {
-    throw new Error("Empty response from Gemini API");
-  }
 
   const parsed = JSON.parse(replyText);
 

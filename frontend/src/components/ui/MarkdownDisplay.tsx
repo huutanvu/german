@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { getVocabularyByWord, createVocabulary, lookupAndAddWord } from "@/lib/grist";
-import { findGermanInfinitive } from "@/lib/german";
+import { getVocabularyByWord, lookupAndAddWord, resolveWordWithGemini } from "@/lib/grist";
 
 interface MarkdownDisplayProps {
   content: string;
@@ -131,85 +130,50 @@ function WordSpan({
   onWordLookup: (word: string, sentence: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<"checking" | "exists" | "missing" | "added">("checking");
-  const [adding, setAdding] = useState(false);
-  const [aiLookingUp, setAiLookingUp] = useState(false);
+  const [status, setStatus] = useState<"idle" | "resolving" | "processing">("idle");
 
-  const cleanWord = word.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "");
-
-  async function handleOpenChange(isOpen: boolean) {
+  function handleOpenChange(isOpen: boolean) {
     setOpen(isOpen);
-    if (isOpen) {
-      setStatus("checking");
-      const resolvedInfinitive = findGermanInfinitive(word, sentence);
-
-      const lowerWord = cleanWord.toLowerCase();
-      const capWord = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase();
-      const lowerInfinitive = resolvedInfinitive.toLowerCase();
-      const capInfinitive = resolvedInfinitive.charAt(0).toUpperCase() + resolvedInfinitive.slice(1).toLowerCase();
-
-      const variations = Array.from(new Set([lowerWord, capWord, lowerInfinitive, capInfinitive]));
-
-      try {
-        const item = await getVocabularyByWord(variations);
-
-        if (item) {
-          setStatus("exists");
-        } else {
-          setStatus("missing");
-        }
-      } catch (err) {
-        console.error("Failed to check Grist for vocabulary:", err);
-        setStatus("missing");
-      }
-    }
+    if (!isOpen) setStatus("idle");
   }
 
-  async function handleAiLookup() {
-    setAiLookingUp(true);
-    setStatus("checking");
+  async function handleLookup() {
+    setStatus("resolving");
     try {
-      const newItem = await lookupAndAddWord(word, sentence);
-      if (newItem) {
-        setStatus("exists");
-        onWordLookup(newItem.fields.word, sentence);
+      // Step 1: Gemini resolves the canonical form
+      const canonical = await resolveWordWithGemini(word, sentence);
+
+      // Step 2: Build Grist search variants
+      const bare = canonical.replace(/^(der|die|das|den|dem|des)\s+/i, "");
+      const cap = bare.charAt(0).toUpperCase() + bare.slice(1);
+      const variations = Array.from(new Set([
+        canonical, canonical.toLowerCase(),
+        bare, bare.toLowerCase(), cap,
+        ...["der", "die", "das"].map(a => `${a} ${bare}`),
+        ...["der", "die", "das"].map(a => `${a} ${cap}`),
+      ]));
+
+      const item = await getVocabularyByWord(variations);
+
+      if (item) {
+        // Found — open sidebar immediately
+        onWordLookup(canonical, sentence);
         setOpen(false);
+        setStatus("idle");
       } else {
-        setStatus("missing");
+        // Not found — auto-generate with Gemini
+        setStatus("processing");
+        const newItem = await lookupAndAddWord(canonical, sentence);
+        if (newItem) {
+          onWordLookup(newItem.fields.word, sentence);
+        }
+        setOpen(false);
+        setStatus("idle");
       }
     } catch (err) {
-      console.error("AI Lookup failed:", err);
-      setStatus("missing");
-    } finally {
-      setAiLookingUp(false);
-    }
-  }
-
-  async function handleAddWord() {
-    setAdding(true);
-    try {
-      // Save exact clicked word and full sentence context
-      await createVocabulary({
-        word: cleanWord.toLowerCase(),
-        context: sentence.trim(),
-        type: "new",
-        level: "B1",
-        meanings: "",
-        grammar: "",
-        dailyUse: "",
-        professionalUse: "",
-        tips: "",
-        caution: "",
-        isProcessed: false,
-      });
-      setStatus("added");
-      setTimeout(() => {
-        setOpen(false);
-      }, 1000);
-    } catch (err) {
-      console.error("Failed to add word to vocabulary queue:", err);
-    } finally {
-      setAdding(false);
+      console.error("Lookup failed:", err);
+      setOpen(false);
+      setStatus("idle");
     }
   }
 
@@ -228,53 +192,34 @@ function WordSpan({
           side="bottom"
           align="center"
           sideOffset={6}
-          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-xl p-2 z-50 flex flex-col gap-1 min-w-[160px] font-sans text-xs outline-none"
+          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-xl p-2 z-50 flex flex-col gap-1 min-w-[150px] font-sans text-xs outline-none"
         >
-          {status === "checking" && (
-            <div className="py-2 text-center text-gray-400 animate-pulse font-medium">
-              {aiLookingUp ? "AI processing..." : "Checking..."}
-            </div>
-          )}
-
-          {status === "exists" && (
+          {status === "idle" && (
             <button
-              onClick={() => {
-                onWordLookup(word, sentence);
-                setOpen(false);
-              }}
+              onClick={handleLookup}
               className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200 rounded font-semibold transition-colors cursor-pointer"
             >
-              Lookup Definition
+              Lookup
             </button>
           )}
 
-          {status === "missing" && (
-            <>
-              <button
-                onClick={handleAiLookup}
-                disabled={aiLookingUp || adding}
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 rounded font-semibold transition-colors cursor-pointer disabled:opacity-50"
-              >
-                AI Lookup & Save
-              </button>
-              <button
-                onClick={handleAddWord}
-                disabled={aiLookingUp || adding}
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 rounded font-semibold transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Queue for Review
-              </button>
-            </>
-          )}
-
-          {status === "added" && (
-            <div className="px-3 py-2 text-emerald-600 dark:text-emerald-400 font-bold italic text-center">
-              Added to review!
+          {status === "resolving" && (
+            <div className="py-2 px-3 text-center text-gray-400 animate-pulse font-medium">
+              Looking up...
             </div>
           )}
+
+          {status === "processing" && (
+            <div className="py-2 px-3 text-center text-gray-400 animate-pulse font-medium">
+              Generating...
+            </div>
+          )}
+
           <Popover.Arrow className="fill-white dark:fill-slate-900 stroke-gray-200 dark:stroke-slate-800 stroke-[1px]" />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
   );
 }
+
+

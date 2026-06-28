@@ -71,3 +71,44 @@ export function findGermanInfinitive(clickedWord: string, sentenceText: string):
 
   return root; // Fallback to direct infinitive root
 }
+
+const ARTICLES = ["der", "die", "das", "den", "dem", "des"];
+
+/**
+ * Builds a de-duped array of word variants to query Grist with.
+ * Handles:
+ *  - lowercase / capitalised forms of the clicked word
+ *  - resolved infinitive forms
+ *  - article-prefixed forms (e.g. "die Aufgaben", "das Treffen")
+ *  - article-stripped forms (e.g. "die Aufgaben" -> "Aufgaben")
+ */
+export function buildVocabVariations(clickedWord: string, sentence: string): string[] {
+  const clean = clickedWord.trim().replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "");
+  const resolved = findGermanInfinitive(clean, sentence);
+
+  const lower = clean.toLowerCase();
+  const cap = clean.charAt(0).toUpperCase() + clean.slice(1);
+  const lowerResolved = resolved.toLowerCase();
+  const capResolved = resolved.charAt(0).toUpperCase() + resolved.slice(1);
+
+  const base = [lower, cap, lowerResolved, capResolved];
+
+  // Strip leading article if clicked word already has one (e.g. passed from Gemini result)
+  const stripped = base.flatMap(v => {
+    for (const art of ARTICLES) {
+      if (v.toLowerCase().startsWith(art + " ")) {
+        const bare = v.slice(art.length + 1);
+        return [bare, bare.toLowerCase(), bare.charAt(0).toUpperCase() + bare.slice(1)];
+      }
+    }
+    return [];
+  });
+
+  // Also add article-prefixed variants so "Aufgaben" matches "die Aufgaben"
+  const articled = [cap, capResolved].flatMap(v =>
+    ARTICLES.map(art => `${art} ${v}`)
+  );
+
+  return Array.from(new Set([...base, ...stripped, ...articled]));
+}
+
