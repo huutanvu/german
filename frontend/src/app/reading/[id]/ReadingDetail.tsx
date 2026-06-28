@@ -14,7 +14,7 @@ export default function ReadingDetail({ id }: { id: number }) {
 
   const [exercise, setExercise] = useState<ReadingPractice | null>(null);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
-  const [answers, setAnswers] = useState<string[]>(["", "", "", "", ""]);
+  const [answers, setAnswers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +33,10 @@ export default function ReadingDetail({ id }: { id: number }) {
     setIsLookupOpen(true);
   }
 
+  // Parse questions dynamically
+  let questions: any[] = [];
+  try { questions = JSON.parse(exercise?.fields.questionsJson || "[]"); } catch {}
+
   async function loadExerciseData() {
     if (isNaN(id)) return;
     try {
@@ -44,11 +48,18 @@ export default function ReadingDetail({ id }: { id: number }) {
       }
       setExercise(ex);
 
+      let qList: any[] = [];
+      try { qList = JSON.parse(ex.fields.questionsJson || "[]"); } catch {}
+
       try {
-        const ans = JSON.parse(ex.fields.userAnswersJson || '["", "", "", "", ""]');
-        setAnswers(ans);
+        const ans = JSON.parse(ex.fields.userAnswersJson || "[]");
+        if (Array.isArray(ans) && ans.length === qList.length) {
+          setAnswers(ans);
+        } else {
+          setAnswers(qList.map(q => q.type === "multi_selection" ? [] : ""));
+        }
       } catch {
-        setAnswers(["", "", "", "", ""]);
+        setAnswers(qList.map(q => q.type === "multi_selection" ? [] : ""));
       }
     } catch (err) {
       console.error("Failed to load exercise details:", err);
@@ -62,15 +73,57 @@ export default function ReadingDetail({ id }: { id: number }) {
   }, [id]);
 
   async function handleSubmit() {
-    if (!exercise) return;
+    if (!exercise || !questions.length) return;
 
     setSubmitting(true);
     try {
+      // Offline direct grading
+      const enCorrections: any[] = [];
+      const vnCorrections: any[] = [];
+
+      questions.forEach((q: any, idx: number) => {
+        const uAns = answers[idx];
+        const cAns = q.correct_answer;
+        
+        let isCorrect = false;
+        if (q.type === "multi_selection") {
+          const uArr = Array.isArray(uAns) ? uAns : [];
+          const cArr = Array.isArray(cAns) ? cAns : [];
+          isCorrect = uArr.length === cArr.length && uArr.every(x => cArr.includes(x));
+        } else {
+          const uStr = String(uAns || "").trim().toLowerCase();
+          const cStr = String(cAns || "").trim().toLowerCase();
+          isCorrect = uStr === cStr;
+        }
+
+        const questionText = q.question;
+        const correctStr = Array.isArray(cAns) ? cAns.join(", ") : String(cAns);
+        const userStr = Array.isArray(uAns) ? uAns.join(", ") : String(uAns);
+
+        enCorrections.push({
+          question: questionText,
+          userAnswer: userStr,
+          evaluation: isCorrect ? "Correct! Well done." : "Incorrect.",
+          correction: isCorrect ? "" : `Correct answer: ${correctStr}`,
+          explanation: q.explanation || "No explanation provided."
+        });
+
+        vnCorrections.push({
+          question: questionText,
+          userAnswer: userStr,
+          evaluation: isCorrect ? "Chính xác! Làm tốt lắm." : "Chưa chính xác.",
+          correction: isCorrect ? "" : `Đáp án đúng là: ${correctStr}`,
+          explanation: q.explanation_vn || q.explanation || "Không có giải thích."
+        });
+      });
+
       await upsertReadingPractice(exercise.fields.topic, {
         userAnswersJson: JSON.stringify(answers),
-        status: "pending_evaluation",
+        correctionsJson: JSON.stringify(enCorrections),
+        correctionsJson_vn: JSON.stringify(vnCorrections),
+        status: "evaluated",
       });
-      // Reload
+
       await loadExerciseData();
     } catch (err) {
       console.error("Failed to submit answers:", err);
@@ -79,17 +132,30 @@ export default function ReadingDetail({ id }: { id: number }) {
     }
   }
 
-  function handleAnswerChange(val: string) {
+  async function handleRedo() {
+    if (!exercise || !questions.length) return;
+    try {
+      const clearedAnswers = questions.map(q => q.type === "multi_selection" ? [] : "");
+      await upsertReadingPractice(exercise.fields.topic, {
+        userAnswersJson: JSON.stringify(clearedAnswers),
+        correctionsJson: "[]",
+        correctionsJson_vn: "[]",
+        status: "pending_user",
+      });
+      await loadExerciseData();
+      setActiveQuestionIdx(0);
+    } catch (err) {
+      console.error("Failed to redo exercise:", err);
+    }
+  }
+
+  function handleAnswerChange(val: any) {
     setAnswers((prev) => {
       const next = [...prev];
       next[activeQuestionIdx] = val;
       return next;
     });
   }
-
-  // Parse questions & corrections dynamically
-  let questions: string[] = [];
-  try { questions = JSON.parse(exercise?.fields.questionsJson || "[]"); } catch {}
 
   let englishCorrections: any[] = [];
   let vietnameseCorrections: any[] = [];
@@ -159,121 +225,224 @@ export default function ReadingDetail({ id }: { id: number }) {
         </div>
 
         {/* Paginated Questions section */}
-        {questions.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                {t("Questions & Feedback", "Câu hỏi & Nhận xét")}
-              </h3>
-              <span className="text-xs text-gray-500 dark:text-slate-400 font-mono font-bold">
-                {t("Question", "Câu")} {activeQuestionIdx + 1} {t("of", "trên")} {questions.length}
-              </span>
-            </div>
+        {questions.length > 0 && (() => {
+          const q = questions[activeQuestionIdx];
+          const currentAnswer = answers[activeQuestionIdx];
+          const isPendingUser = exercise.fields.status === "pending_user";
 
-            <div className="space-y-4">
-              {/* Current Question */}
-              <div className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
-                {questions[activeQuestionIdx]}
-              </div>
-
-              {/* Answering fields */}
-              {exercise.fields.status === "pending_user" ? (
-                <div className="flex flex-col gap-2">
-                  <textarea
-                    rows={4}
-                    placeholder={t("Schreiben Sie Ihre Antwort auf Deutsch...", "Viết câu trả lời của bạn bằng tiếng Đức...")}
-                    value={answers[activeQuestionIdx] || ""}
-                    onChange={(e) => handleAnswerChange(e.target.value)}
-                    className="w-full text-sm p-3 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 leading-relaxed font-sans"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">{t("Your Answer", "Câu trả lời của bạn")}</span>
-                    <div className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-200 dark:border-slate-800 italic leading-relaxed">
-                      "{answers[activeQuestionIdx]}"
-                    </div>
+          const renderQuestionInput = () => {
+            if (isPendingUser) {
+              if (q.type === "yes_no" || q.type === "single_selection" || q.type === "fill_in_gap") {
+                const options = q.type === "yes_no" ? ["Ja", "Nein"] : (q.options || []);
+                return (
+                  <div className="space-y-2 mt-3">
+                    {options.map((opt: string) => {
+                      const isSelected = currentAnswer === opt;
+                      return (
+                        <label
+                          key={opt}
+                          className={`flex items-center gap-3 p-3 rounded-lg border text-sm font-medium transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-50/30 dark:bg-blue-950/20 text-blue-950 dark:text-blue-200"
+                              : "border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`q-${q.id}`}
+                            value={opt}
+                            checked={isSelected}
+                            onChange={() => handleAnswerChange(opt)}
+                            className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      );
+                    })}
                   </div>
+                );
+              }
 
-                  {exercise.fields.status === "pending_evaluation" && (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold block italic">
-                      {t("Waiting for offline AI evaluation...", "Đang chờ AI chấm điểm...")}
-                    </span>
-                  )}
+              if (q.type === "multi_selection") {
+                const options = q.options || [];
+                const selectedList = Array.isArray(currentAnswer) ? currentAnswer : [];
+                return (
+                  <div className="space-y-2 mt-3">
+                    {options.map((opt: string) => {
+                      const isSelected = selectedList.includes(opt);
+                      return (
+                        <label
+                          key={opt}
+                          className={`flex items-center gap-3 p-3 rounded-lg border text-sm font-medium transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-50/30 dark:bg-blue-950/20 text-blue-950 dark:text-blue-200"
+                              : "border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            value={opt}
+                            checked={isSelected}
+                            onChange={() => {
+                              let newList = [...selectedList];
+                              if (newList.includes(opt)) {
+                                newList = newList.filter(x => x !== opt);
+                              } else {
+                                newList.push(opt);
+                              }
+                              handleAnswerChange(newList);
+                            }}
+                            className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              }
+            } else {
+              const selectedList = Array.isArray(currentAnswer) ? currentAnswer : (currentAnswer ? [currentAnswer] : []);
+              const correctList = Array.isArray(q.correct_answer) ? q.correct_answer : (q.correct_answer ? [q.correct_answer] : []);
+              const options = q.type === "yes_no" ? ["Ja", "Nein"] : (q.options || []);
 
-                  {exercise.fields.status === "evaluated" && (() => {
-                    const currentCorrection = corrections[activeQuestionIdx];
-                    if (!currentCorrection) return null;
+              return (
+                <div className="space-y-2 mt-3">
+                  {options.map((opt: string) => {
+                    const isSelected = selectedList.includes(opt);
+                    const isCorrectOpt = correctList.includes(opt);
+                    
+                    let optStyle = "border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300";
+                    if (isSelected) {
+                      optStyle = isCorrectOpt
+                        ? "border-emerald-500 bg-emerald-50/20 text-emerald-800 dark:text-emerald-300 font-semibold"
+                        : "border-red-500 bg-red-50/10 text-red-800 dark:text-red-300 font-semibold";
+                    } else if (isCorrectOpt) {
+                      optStyle = "border-emerald-500 bg-emerald-50/5 text-emerald-700 dark:text-emerald-400 font-medium";
+                    }
 
                     return (
-                      <div className="space-y-3 mt-2">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-1">{t("AI Correction & Feedback", "Sửa lỗi & Nhận xét từ AI")}</span>
-                        
-                        <div className="p-4 bg-emerald-50/30 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 rounded-lg text-xs space-y-3">
-                          {currentCorrection.correction && (
-                            <div>
-                              <span className="font-bold text-emerald-800 dark:text-emerald-300 block">{t("Corrected Version", "Bản sửa lỗi chính xác")}</span>
-                              <p className="mt-0.5 text-gray-900 dark:text-gray-100 font-semibold italic">
-                                "{currentCorrection.correction}"
-                              </p>
-                            </div>
-                          )}
-
-                          {currentCorrection.evaluation && (
-                            <div>
-                              <span className="font-bold text-slate-500 dark:text-slate-400 block">{t("Evaluation", "Đánh giá nội dung")}</span>
-                              <p className="mt-0.5 text-gray-800 dark:text-gray-200 font-medium">
-                                {currentCorrection.evaluation}
-                              </p>
-                            </div>
-                          )}
-
-                          {currentCorrection.explanation && (
-                            <div className="pt-2.5 border-t border-emerald-200/50 dark:border-emerald-900/20">
-                              <span className="font-bold text-slate-500 dark:text-slate-400 block">{t("Grammar & Explanation", "Ngữ pháp & Giải thích")}</span>
-                              <p className="mt-1 text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line font-medium font-sans">
-                                {currentCorrection.explanation}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                      <div
+                        key={opt}
+                        className={`flex items-center gap-3 p-3 rounded-lg border text-sm opacity-90 transition-all ${optStyle}`}
+                      >
+                        <input
+                          type={q.type === "multi_selection" ? "checkbox" : "radio"}
+                          checked={isSelected}
+                          disabled
+                          className="w-4 h-4 text-blue-600 border-gray-300"
+                        />
+                        <span>{opt}</span>
+                        {isCorrectOpt && <span className="ml-auto text-emerald-600 text-xs font-bold font-mono">✓ {t("Correct", "Đúng")}</span>}
+                        {isSelected && !isCorrectOpt && <span className="ml-auto text-red-600 text-xs font-bold font-mono">✗ {t("Your Choice", "Bạn chọn")}</span>}
                       </div>
                     );
-                  })()}
+                  })}
                 </div>
-              )}
-            </div>
+              );
+            }
+            return null;
+          };
 
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-between border-t border-gray-100 dark:border-slate-800 pt-4 mt-2">
-              <button
-                onClick={() => setActiveQuestionIdx(prev => Math.max(0, prev - 1))}
-                disabled={activeQuestionIdx === 0}
-                className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded disabled:opacity-30 cursor-pointer"
-              >
-                {t("Previous", "Trước")}
-              </button>
+          return (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                    {t("Questions & Feedback", "Câu hỏi & Nhận xét")}
+                  </h3>
+                  {q.difficulty && (
+                    <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-850 text-gray-600 dark:text-slate-400 text-[10px] font-bold rounded">
+                      Level {q.difficulty}
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500 dark:text-slate-400 font-mono font-bold">
+                  {t("Question", "Câu")} {activeQuestionIdx + 1} {t("of", "trên")} {questions.length}
+                </span>
+              </div>
 
-              {activeQuestionIdx < questions.length - 1 ? (
+              <div className="space-y-4">
+                {/* Question Type Tag */}
+                <div className="flex">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                    {q.type === "yes_no" && t("Yes / No", "Đúng / Sai")}
+                    {q.type === "single_selection" && t("Single Choice", "Chọn một đáp án")}
+                    {q.type === "multi_selection" && t("Multiple Choice", "Chọn nhiều đáp án")}
+                    {q.type === "fill_in_gap" && t("Fill in the Blank", "Điền vào chỗ trống")}
+                  </span>
+                </div>
+
+                {/* Current Question Text */}
+                <div className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
+                  {q.question}
+                </div>
+
+                {/* Answering Choice/Inputs */}
+                {renderQuestionInput()}
+
+                {/* AI Correction/Explanation Panel (if evaluated) */}
+                {exercise.fields.status === "evaluated" && (() => {
+                  const currentCorrection = corrections[activeQuestionIdx];
+                  if (!currentCorrection) return null;
+
+                  return (
+                    <div className="space-y-2 mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
+                      <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block">{t("AI Explanation", "Giải thích chi tiết")}</span>
+                      <div className="p-4 bg-emerald-50/20 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/20 rounded-lg text-xs">
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                          {currentCorrection.explanation}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Pagination and Submission Controls */}
+              <div className="flex items-center justify-between border-t border-gray-100 dark:border-slate-800 pt-4 mt-2">
                 <button
-                  onClick={() => setActiveQuestionIdx(prev => Math.min(questions.length - 1, prev + 1))}
-                  className="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 text-xs font-semibold rounded cursor-pointer"
+                  onClick={() => setActiveQuestionIdx(prev => Math.max(0, prev - 1))}
+                  disabled={activeQuestionIdx === 0}
+                  className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded disabled:opacity-30 cursor-pointer"
                 >
-                  {t("Next", "Sau")}
+                  {t("Previous", "Trước")}
                 </button>
-              ) : exercise.fields.status === "pending_user" ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || answers.some(a => !a.trim())}
-                  className="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded disabled:opacity-50 cursor-pointer"
-                >
-                  {submitting ? t("Submitting...", "Đang nộp...") : t("Submit All Answers", "Nộp toàn bộ câu trả lời")}
-                </button>
-              ) : null}
+
+                <div className="flex gap-2">
+                  {exercise.fields.status === "evaluated" && (
+                    <button
+                      onClick={handleRedo}
+                      className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors"
+                    >
+                      {t("Redo / Try Again", "Làm lại / Thử lại")}
+                    </button>
+                  )}
+
+                  {activeQuestionIdx < questions.length - 1 ? (
+                    <button
+                      onClick={() => setActiveQuestionIdx(prev => Math.min(questions.length - 1, prev + 1))}
+                      className="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 text-xs font-semibold rounded cursor-pointer"
+                    >
+                      {t("Next", "Sau")}
+                    </button>
+                  ) : exercise.fields.status === "pending_user" ? (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={submitting || answers.some(a => {
+                        if (Array.isArray(a)) return a.length === 0;
+                        return !String(a || "").trim();
+                      })}
+                      className="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded disabled:opacity-50 cursor-pointer"
+                    >
+                      {submitting ? t("Submitting...", "Đang nộp...") : t("Submit All Answers", "Nộp toàn bộ câu trả lời")}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       <WordLookupSidebar

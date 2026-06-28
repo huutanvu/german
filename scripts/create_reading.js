@@ -51,23 +51,49 @@ async function callGemini(body) {
   throw lastError || new Error("All Gemini models failed");
 }
 
-const prompt = `You are a German language teacher for software engineers.
-Create a new German reading practice for level B1 on the topic "Code-Reviews im Team" (General Software Engineering).
+async function getLearningContext() {
+  const res = await fetch(`${GRIST_URL}/docs/${GRIST_DOC}/tables/LearningContext/records`, {
+    headers: { Authorization: `Bearer ${GRIST_KEY}` }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.records?.[0] || null;
+}
+
+async function main() {
+  console.log("Fetching learning context...");
+  const context = await getLearningContext();
+  const level = context?.fields?.targetLevel || 'B1';
+  const currentTopic = context?.fields?.currentTopic || 'Code-Reviews im Team';
+
+  console.log(`Generating reading practice from Gemini for Level ${level}, Topic: "${currentTopic}"...`);
+
+  const prompt = `You are a German language teacher for software engineers.
+Create a new German reading practice for level ${level} on the topic "${currentTopic}".
 
 The response must be a JSON object with:
 1. "topic": "A short, engaging title in German, e.g., 'Die Kunst des Code-Reviews' or similar"
-2. "germanText": "An adapted German text of exactly 250-350 words. The language must be natural, B1 level, explaining what code reviews are, why they are useful in software engineering, and best practices (e.g. constructive feedback, small pull requests, continuous learning). Use bold markdown (**word**) for 4-5 interesting key vocabulary terms inside the text."
-3. "questions": A JSON array of exactly 5 comprehension questions in German (e.g., ["Warum sind Code-Reviews wichtig?", ...])
+2. "germanText": "An adapted German text of exactly 250-350 words. The language must be natural, CEFR level ${level}, focusing on the topic ${currentTopic} in a professional software engineering environment. Use bold markdown (**word**) for 4-5 interesting key vocabulary terms inside the text."
+3. "questions": A JSON array of exactly 10 comprehension questions in German. The difficulties must be increasing from 1 to 10.
+   Each question in the array must be an object with this schema:
+   {
+     "id": number (1 to 10),
+     "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap",
+     "question": "question text in German. For 'fill_in_gap', use '____' for the gap (do NOT include the option list inside the question string itself)",
+     "options": ["Option 1", "Option 2", ...] (For 'yes_no', options MUST be exactly ["Ja", "Nein"]. For 'fill_in_gap', this field is REQUIRED and must contain the candidate words to fill the gap),
+     "correct_answer": "correct option string" (or array of option strings for 'multi_selection'),
+     "difficulty": number (1 to 10),
+     "explanation": "Brief explanation of why this answer is correct in English",
+     "explanation_vn": "Brief explanation of why this answer is correct in Vietnamese"
+   }
 
 Response format: ONLY return the JSON object matching this schema. No markdown formatting blocks around JSON.
 {
   "topic": "...",
   "germanText": "...",
-  "questions": ["...", "...", "...", "...", "..."]
+  "questions": [...]
 }`;
 
-async function main() {
-  console.log("Generating reading practice from Gemini...");
   const reply = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: "application/json" },
@@ -76,7 +102,7 @@ async function main() {
   const parsed = JSON.parse(reply);
   console.log("Topic:", parsed.topic);
   console.log("Text length:", parsed.germanText.split(/\s+/).length, "words");
-  console.log("Questions:", parsed.questions);
+  console.log("Questions count:", parsed.questions.length);
 
   const gristUrl = `${GRIST_URL}/docs/${GRIST_DOC}/tables/ReadingPractice/records`;
   const today = new Date().toISOString().split("T")[0];
@@ -99,7 +125,8 @@ async function main() {
             date: today,
             audioFileId: "",
             userAnswersJson: "[]",
-            correctionsJson: ""
+            correctionsJson: "",
+            correctionsJson_vn: ""
           }
         }
       ]

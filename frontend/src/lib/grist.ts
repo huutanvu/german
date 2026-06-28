@@ -26,10 +26,11 @@ const base = `${GRIST_URL}/docs/${GRIST_DOC}`;
 // Gemini helper with model fallback chain
 // ---------------------------------------------------------------------------
 const GEMINI_MODELS = [
+  "gemini-3.5-live-translate",
+  "gemini-3.1-flash-lite",
   "gemini-2.5-flash",
   "gemini-2.5-pro",
   "gemini-3-flash-preview",
-  "gemini-3.1-flash-lite",
   "gemini-2.0-flash",
   "gemini-3.5-flash",
 ];
@@ -40,6 +41,7 @@ async function callGemini(
 ): Promise<string> {
   let lastError: Error | null = null;
   for (const model of GEMINI_MODELS) {
+    console.log(`Using model ${model}`)
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {

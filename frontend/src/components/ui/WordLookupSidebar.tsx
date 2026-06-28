@@ -23,21 +23,39 @@ function HighlightedSentence({
   sentence: string;
   tokensToHighlight: string[];
 }) {
-  const parts = sentence.split(/(\s+)/);
+  const boldParts = sentence.split(/\*\*/);
   return (
     <span>
-      {parts.map((part, i) => {
-        const clean = part.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase();
-        const highlighted = tokensToHighlight.includes(clean);
-        return highlighted ? (
-          <mark
-            key={i}
-            className="bg-yellow-200 dark:bg-yellow-700/60 text-yellow-900 dark:text-yellow-100 rounded px-0.5 not-italic"
-          >
-            {part}
-          </mark>
-        ) : (
-          <span key={i}>{part}</span>
+      {boldParts.map((boldPart, bpIdx) => {
+        const isBold = bpIdx % 2 !== 0;
+        const italicParts = boldPart.split(/\*/);
+
+        return (
+          <span key={bpIdx} className={isBold ? "font-bold text-gray-950 dark:text-white" : ""}>
+            {italicParts.map((italicPart, ipIdx) => {
+              const isItalic = ipIdx % 2 !== 0;
+              const tokens = italicPart.split(/(\s+)/);
+
+              return (
+                <span key={ipIdx} className={isItalic ? "italic text-gray-900 dark:text-slate-200" : ""}>
+                  {tokens.map((token, tIdx) => {
+                    const clean = token.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase();
+                    const highlighted = tokensToHighlight.includes(clean);
+                    return highlighted ? (
+                      <mark
+                        key={tIdx}
+                        className="bg-yellow-200 dark:bg-yellow-700/60 text-yellow-900 dark:text-yellow-100 rounded px-0.5 not-italic"
+                      >
+                        {token}
+                      </mark>
+                    ) : (
+                      <span key={tIdx}>{token}</span>
+                    );
+                  })}
+                </span>
+              );
+            })}
+          </span>
         );
       })}
     </span>
