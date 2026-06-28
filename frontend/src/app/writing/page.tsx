@@ -44,7 +44,7 @@ export default function WritingDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-955 text-gray-700 dark:text-gray-200">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
         <div className="animate-pulse text-lg font-medium">{t("Loading writing dashboard...", "Đang tải danh sách bài viết...")}</div>
       </div>
     );
@@ -111,7 +111,7 @@ export default function WritingDashboard() {
                             ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
                             : isPending
                             ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"
-                            : "bg-blue-100 dark:bg-blue-955 text-blue-800 dark:text-blue-300"
+                            : "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300"
                         }`}
                       >
                         {hasCorrection

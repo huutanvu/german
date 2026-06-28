@@ -136,7 +136,7 @@ export default function WritingDetail({ id }: { id: number }) {
               placeholder={t("Draft your paragraph here in German...", "Bản nháp đoạn văn của bạn ở đây bằng tiếng Đức...")}
               value={paragraph}
               onChange={(e) => setParagraph(e.target.value)}
-              className="w-full text-sm p-3 bg-white dark:bg-slate-955 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 leading-relaxed font-sans"
+              className="w-full text-sm p-3 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 leading-relaxed font-sans"
             />
             <button
               onClick={handleSubmit}
@@ -160,7 +160,7 @@ export default function WritingDetail({ id }: { id: number }) {
               </div>
 
               {exercise.fields.status === "pending_correction" && (
-                <div className="bg-amber-50 dark:bg-amber-955/40 text-amber-800 dark:text-amber-300 text-xs p-3 rounded border border-amber-200 dark:border-amber-900/40 font-medium italic">
+                <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs p-3 rounded border border-amber-200 dark:border-amber-900/40 font-medium italic">
                   {t(
                     "Submitted. Waiting for offline AI sentence corrections...",
                     "Đã nộp bài. Đang chờ AI sửa lỗi ngữ pháp..."

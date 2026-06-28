@@ -135,7 +135,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-955 text-gray-700 dark:text-gray-200">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
         <div className="animate-pulse text-lg font-medium">{t("Loading speaking module...", "Đang tải bài nói...")}</div>
       </div>
     );
@@ -143,7 +143,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
 
   if (!exercise) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-955 text-gray-700 dark:text-gray-200">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
         <div className="text-center space-y-3">
           <p className="text-lg font-semibold">{t("Speaking module not found.", "Không tìm thấy bài nói.")}</p>
           <button

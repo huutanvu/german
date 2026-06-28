@@ -65,7 +65,7 @@ export default function VocabularyPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-955 text-gray-700 dark:text-gray-200">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-slate-950 text-gray-700 dark:text-gray-200">
         <div className="animate-pulse text-lg font-medium">{t("Loading vocabulary lists...", "Đang tải danh sách từ vựng...")}</div>
       </div>
     );
@@ -128,7 +128,7 @@ export default function VocabularyPage() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{word.fields.word}</h3>
                     <div className="flex gap-2">
-                      <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-955 text-blue-800 dark:text-blue-200 text-xs font-semibold rounded">
+                      <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-xs font-semibold rounded">
                         {word.fields.level}
                       </span>
                       <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded">
@@ -147,7 +147,7 @@ export default function VocabularyPage() {
                   </div>
 
                   {pendingReview ? (
-                    <div className="bg-amber-50 dark:bg-amber-955/40 text-amber-800 dark:text-amber-300 text-xs p-3 rounded border border-amber-200 dark:border-amber-900/40 font-medium">
+                    <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs p-3 rounded border border-amber-200 dark:border-amber-900/40 font-medium">
                       {t("Sentence submitted", "Câu đã nộp")}: "{pendingReview.fields.userSentence}" ({t("Pending offline AI correction", "Đang chờ AI sửa lỗi offline")})
                     </div>
                   ) : (
@@ -157,7 +157,7 @@ export default function VocabularyPage() {
                         placeholder={t("Write a sentence in German using this word...", "Viết một câu bằng tiếng Đức sử dụng từ này...")}
                         value={inputs[word.id] || ""}
                         onChange={(e) => setInputs((prev) => ({ ...prev, [word.id]: e.target.value }))}
-                        className="w-full text-sm px-3 py-2 bg-white dark:bg-slate-955 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500"
+                        className="w-full text-sm px-3 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500"
                       />
                       <button
                         onClick={() => handleSubmit(word.id)}
