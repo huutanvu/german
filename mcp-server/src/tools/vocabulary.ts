@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { gristGet, gristPost, gristPatch, gristFilter } from '../clients/grist.js';
-import type { GristRecordsResponse, VocabularyFields, VocabularyReviewFields } from '../types.js';
+import type { GristRecordsResponse, VocabularyFields, VocabularyReviewFields, VocabularyUsageFields } from '../types.js';
 
 export function registerVocabularyTools(server: McpServer) {
   server.tool(
@@ -10,11 +10,13 @@ export function registerVocabularyTools(server: McpServer) {
     {
       level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
       type: z.enum(['new', 'revised', 'permanent', 'complicated']).optional(),
+      userId: z.string().optional().describe('Filter by user ID for multi-user support'),
     },
-    async ({ level, type }) => {
+    async ({ level, type, userId }) => {
       const filters: Record<string, any[]> = {};
       if (level) filters.level = [level];
       if (type) filters.type = [type];
+      if (userId) filters.userId = [userId];
 
       const query = Object.keys(filters).length ? gristFilter(filters) : '';
       const data = await gristGet<GristRecordsResponse<VocabularyFields>>(
@@ -47,6 +49,7 @@ export function registerVocabularyTools(server: McpServer) {
       caution: z.string().describe('Pitfalls, false friends, common errors'),
       context: z.string().optional().describe('Sentence context where this word was captured'),
       isProcessed: z.boolean().optional().describe('True if this word is fully filled out, false if waiting in queue'),
+      userId: z.string().optional().describe('User ID for multi-user support'),
     },
     async (fields) => {
       const result = await gristPost('/tables/Vocabulary/records', {
@@ -114,10 +117,12 @@ export function registerVocabularyTools(server: McpServer) {
     'List vocabulary reviews, optionally filtered by status (pending_correction, corrected, failed).',
     {
       status: z.enum(['pending_correction', 'corrected', 'failed']).optional(),
+      userId: z.string().optional().describe('Filter by user ID for multi-user support'),
     },
-    async ({ status }) => {
+    async ({ status, userId }) => {
       const filters: Record<string, any[]> = {};
       if (status) filters.status = [status];
+      if (userId) filters.userId = [userId];
 
       const query = Object.keys(filters).length ? gristFilter(filters) : '';
       const data = await gristGet<GristRecordsResponse<VocabularyReviewFields>>(
@@ -164,6 +169,64 @@ export function registerVocabularyTools(server: McpServer) {
           {
             type: 'text' as const,
             text: `Review ID ${id} marked as '${status}' and updated with corrections.`,
+          },
+        ],
+      };
+    },
+  );
+
+  server.tool(
+    'list_vocabulary_usage',
+    'List VocabularyUsage records for a given vocab word, optionally filtered by profession.',
+    {
+      vocabId: z.number().describe('Grist row ID of the vocabulary item'),
+      profession: z.string().optional().describe('Filter by profession context'),
+    },
+    async ({ vocabId, profession }) => {
+      const filters: Record<string, any[]> = { vocabId: [vocabId] };
+      if (profession) filters.profession = [profession];
+      const query = gristFilter(filters);
+      const data = await gristGet<GristRecordsResponse<VocabularyUsageFields>>(
+        `/tables/VocabularyUsage/records${query}`,
+      );
+      const items = data.records.map((r) => ({ id: r.id, ...r.fields }));
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(items, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
+    'add_vocabulary_usage',
+    'Add a profession-specific usage entry for a vocabulary word (dailyUse, professionalUse, tips, caution).',
+    {
+      vocabId: z.number().describe('Grist row ID of the vocabulary item'),
+      profession: z.string().describe('Profession context (e.g. Software Engineer)'),
+      dailyUse: z.string().describe('Daily example sentence with translation'),
+      dailyUse_vn: z.string().optional().describe('Daily example sentence with Vietnamese translation'),
+      professionalUse: z.string().describe('Professional example sentence with translation'),
+      professionalUse_vn: z.string().optional().describe('Professional example sentence with Vietnamese translation'),
+      tips: z.string().describe('Grammatical tips and cases'),
+      tips_vn: z.string().optional().describe('Grammatical tips in Vietnamese'),
+      caution: z.string().describe('Common pitfalls or false friends'),
+      caution_vn: z.string().optional().describe('Common pitfalls in Vietnamese'),
+    },
+    async (fields) => {
+      const result = await gristPost('/tables/VocabularyUsage/records', {
+        records: [
+          {
+            fields: {
+              ...fields,
+              createdAt: new Date().toISOString(),
+            },
+          },
+        ],
+      });
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `VocabularyUsage entry added with ID ${result.records[0].id}.`,
           },
         ],
       };

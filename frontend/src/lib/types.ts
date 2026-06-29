@@ -14,6 +14,7 @@ export interface LearningContextFields {
   currentTopic: string;
   professionalEnvironment: string;
   updatedAt?: string;
+  userId?: string;
 }
 
 export interface VocabularyFields {
@@ -36,6 +37,7 @@ export interface VocabularyFields {
   context?: string;
   isProcessed?: boolean;
   updatedAt?: string;
+  userId?: string;
 }
 
 export interface VocabularyReviewFields {
@@ -46,6 +48,7 @@ export interface VocabularyReviewFields {
   correctionFeedback_vn?: string;
   status: 'pending_correction' | 'corrected' | 'failed';
   reviewedAt?: string;
+  userId?: string;
 }
 
 export interface WritingPracticeFields {
@@ -57,6 +60,7 @@ export interface WritingPracticeFields {
   correctionsJson_vn?: string;
   status: 'pending_user' | 'pending_correction' | 'corrected';
   date: string;
+  userId?: string;
 }
 
 export interface ReadingPracticeFields {
@@ -69,6 +73,7 @@ export interface ReadingPracticeFields {
   correctionsJson_vn?: string; // JSON grading/feedback in Vietnamese
   status: 'pending_user' | 'pending_evaluation' | 'evaluated';
   date: string;
+  userId?: string;
 }
 
 export interface GrammarPracticeFields {
@@ -80,6 +85,7 @@ export interface GrammarPracticeFields {
   correctionsJson_vn?: string;
   status: 'pending_user' | 'evaluated';
   date: string;
+  userId?: string;
 }
 
 export interface SpeakingPracticeFields {
@@ -95,6 +101,7 @@ export interface SpeakingPracticeFields {
   score: number;
   status: 'pending_recording' | 'pending_assessment' | 'assessed';
   date: string;
+  userId?: string;
 }
 
 export type LearningContext = GristRecord<LearningContextFields>;
@@ -104,6 +111,29 @@ export type WritingPractice = GristRecord<WritingPracticeFields>;
 export type ReadingPractice = GristRecord<ReadingPracticeFields>;
 export type GrammarPractice = GristRecord<GrammarPracticeFields>;
 export type SpeakingPractice = GristRecord<SpeakingPracticeFields>;
+
+export interface VocabularyUsageFields {
+  vocabId: number | [string, number];
+  profession: string;
+  dailyUse: string;
+  dailyUse_vn?: string;
+  professionalUse: string;
+  professionalUse_vn?: string;
+  tips: string;
+  tips_vn?: string;
+  caution: string;
+  caution_vn?: string;
+  createdAt?: string;
+}
+export type VocabularyUsage = GristRecord<VocabularyUsageFields>;
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  profession: string;
+  targetLevel: string;
+}
 
 // ─── Publit.io Types ────────────────────────────────────────────
 
@@ -139,4 +169,15 @@ export interface AuthSession {
 export interface AuthError {
   error: string;
   error_description?: string;
+}
+
+// ─── Flotiq Types ────────────────────────────────────────────────
+
+export interface ProfessionReference {
+  id: string;
+  slug: string;
+  displayName: string;
+  description: string;
+  sampleContext: string;
+  icon: string;
 }

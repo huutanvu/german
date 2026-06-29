@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 import { useLanguage } from "@/lib/language-context";
-import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useState, useEffect, useRef } from "react";
 
 const THEME_ICONS: Record<string, string> = {
   light: "L",
@@ -16,7 +17,27 @@ export function Navbar() {
   const pathname = usePathname();
   const { theme, cycle } = useTheme();
   const { language, setLanguage, t } = useLanguage();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userMenuOpen]);
 
   const links = [
     { href: "/", label: t("Dashboard", "Bảng điều khiển") },
@@ -79,6 +100,47 @@ export function Navbar() {
             >
               {THEME_ICONS[theme]}
             </button>
+
+            {/* User menu */}
+            {user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="w-7 h-7 rounded-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                  title={user.email}
+                  aria-label="User menu"
+                >
+                  {user.email?.charAt(0).toUpperCase() ?? "U"}
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-9 z-50 w-44 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1">
+                    <Link
+                      href="/settings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="px-2 py-1 rounded text-xs font-medium transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Sign in
+              </Link>
+            )}
 
             {/* Mobile hamburger */}
             <button

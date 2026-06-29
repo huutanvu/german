@@ -9,9 +9,11 @@ import type {
   ReadingPracticeFields,
   GrammarPracticeFields,
   SpeakingPracticeFields,
+  VocabularyUsageFields,
   LearningContext,
   Vocabulary,
   VocabularyReview,
+  VocabularyUsage,
   WritingPractice,
   ReadingPractice,
   GrammarPractice,
@@ -104,7 +106,12 @@ async function gristWrite<T>(
 
 // ─── Learning Context ───────────────────────────────────────────
 
-export async function getLearningContext(): Promise<LearningContext | null> {
+export async function getLearningContext(userId?: string): Promise<LearningContext | null> {
+  if (userId) {
+    const query = `?filter=${encodeURIComponent(JSON.stringify({ userId: [userId] }))}`;
+    const res = await gristGet<GristResponse<LearningContextFields>>(`/tables/LearningContext/records${query}`);
+    return res.records.length > 0 ? res.records[0] : null;
+  }
   const res = await gristGet<GristResponse<LearningContextFields>>("/tables/LearningContext/records");
   return res.records.length > 0 ? res.records[0] : null;
 }
@@ -127,11 +134,13 @@ export async function updateLearningContext(
 
 export async function listVocabulary(
   level?: string,
-  type?: string
+  type?: string,
+  userId?: string
 ): Promise<GristResponse<VocabularyFields>> {
   const filters: Record<string, string[]> = {};
   if (level) filters.level = [level];
   if (type) filters.type = [type];
+  if (userId) filters.userId = [userId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -167,10 +176,12 @@ export async function updateVocabulary(
 // ─── Vocabulary Reviews ──────────────────────────────────────────
 
 export async function listReviews(
-  status?: string
+  status?: string,
+  userId?: string
 ): Promise<GristResponse<VocabularyReviewFields>> {
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
+  if (userId) filters.userId = [userId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -206,10 +217,12 @@ export async function updateReview(
 // ─── Writing Practice ───────────────────────────────────────────
 
 export async function listWritingPractices(
-  status?: string
+  status?: string,
+  userId?: string
 ): Promise<GristResponse<WritingPracticeFields>> {
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
+  if (userId) filters.userId = [userId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -235,10 +248,12 @@ export async function upsertWritingPractice(
 // ─── Reading Practice ────────────────────────────────────────────
 
 export async function listReadingPractices(
-  status?: string
+  status?: string,
+  userId?: string
 ): Promise<GristResponse<ReadingPracticeFields>> {
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
+  if (userId) filters.userId = [userId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -264,10 +279,12 @@ export async function upsertReadingPractice(
 // ─── Grammar Practice ────────────────────────────────────────────
 
 export async function listGrammarPractices(
-  status?: string
+  status?: string,
+  userId?: string
 ): Promise<GristResponse<GrammarPracticeFields>> {
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
+  if (userId) filters.userId = [userId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -293,10 +310,12 @@ export async function upsertGrammarPractice(
 // ─── Speaking Practice ───────────────────────────────────────────
 
 export async function listSpeakingPractices(
-  status?: string
+  status?: string,
+  userId?: string
 ): Promise<GristResponse<SpeakingPracticeFields>> {
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
+  if (userId) filters.userId = [userId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -397,7 +416,7 @@ Response format: { "resolvedWord": "..." }`;
   return parsed.resolvedWord as string;
 }
 
-export async function lookupAndAddWord(rawWord: string, contextSentence: string): Promise<Vocabulary | null> {
+export async function lookupAndAddWord(rawWord: string, contextSentence: string, userId?: string): Promise<Vocabulary | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
@@ -462,6 +481,7 @@ Provide the response as a JSON object matching this schema:
     caution: parsed.caution,
     caution_vn: parsed.caution_vn,
     isProcessed: true,
+    ...(userId ? { userId } : {}),
   });
 
   if (gristRes.records && gristRes.records.length > 0) {
@@ -471,4 +491,30 @@ Provide the response as a JSON object matching this schema:
   }
 
   return null;
+}
+
+export async function listVocabularyUsage(
+  vocabId: number,
+  profession?: string
+): Promise<GristResponse<VocabularyUsageFields>> {
+  const filters: Record<string, unknown[]> = { vocabId: [vocabId] };
+  if (profession) filters.profession = [profession];
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
+  return gristGet<GristResponse<VocabularyUsageFields>>(`/tables/VocabularyUsage/records${query}`);
+}
+
+export async function createVocabularyUsage(
+  fields: Partial<VocabularyUsageFields>
+): Promise<{ records: { id: number }[] }> {
+  return gristWrite('POST', '/tables/VocabularyUsage/records', {
+    records: [{ fields: { ...fields, createdAt: new Date().toISOString() } }],
+  });
+}
+
+export async function getVocabularyUsageForUser(
+  vocabId: number,
+  profession: string
+): Promise<VocabularyUsage | null> {
+  const res = await listVocabularyUsage(vocabId, profession);
+  return res.records.length > 0 ? res.records[0] : null;
 }

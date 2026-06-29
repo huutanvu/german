@@ -12,6 +12,7 @@ export interface LearningContextFields {
   currentTopic: string;
   professionalEnvironment: string;
   updatedAt?: string;
+  userId?: string;
 }
 
 export interface VocabularyFields {
@@ -28,6 +29,7 @@ export interface VocabularyFields {
   context?: string;
   isProcessed?: boolean;
   updatedAt?: string;
+  userId?: string;
 }
 
 export interface VocabularyReviewFields {
@@ -37,6 +39,7 @@ export interface VocabularyReviewFields {
   correctionFeedback: string;
   status: string;
   reviewedAt?: string;
+  userId?: string;
 }
 
 export interface WritingPracticeFields {
@@ -47,6 +50,7 @@ export interface WritingPracticeFields {
   correctionsJson: string;
   status: string;
   date: string;
+  userId?: string;
 }
 
 export interface ReadingPracticeFields {
@@ -58,6 +62,7 @@ export interface ReadingPracticeFields {
   correctionsJson: string;
   status: string;
   date: string;
+  userId?: string;
 }
 
 export interface SpeakingPracticeFields {
@@ -71,4 +76,19 @@ export interface SpeakingPracticeFields {
   score: number;
   status: string;
   date: string;
+  userId?: string;
+}
+
+export interface VocabularyUsageFields {
+  vocabId: number | [string, number];
+  profession: string;
+  dailyUse: string;
+  dailyUse_vn?: string;
+  professionalUse: string;
+  professionalUse_vn?: string;
+  tips: string;
+  tips_vn?: string;
+  caution: string;
+  caution_vn?: string;
+  createdAt?: string;
 }
