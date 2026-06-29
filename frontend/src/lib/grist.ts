@@ -179,7 +179,7 @@ async function getUserProfileFromSupabase(userId?: string): Promise<{ profession
     const rows = await res.json();
     return {
       profession: rows?.[0]?.profession ?? 'software_engineer',
-      targetLevel: rows?.[0]?.targetLevel ?? 'B1',
+      targetLevel: rows?.[0]?.target_level ?? 'B1',
     };
   } catch {
     return defaultProfile;
