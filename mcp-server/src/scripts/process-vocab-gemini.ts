@@ -61,6 +61,33 @@ async function fetchUnprocessed() {
   return data.records;
 }
 
+function cleanJsonString(str: string): string {
+  let cleaned = str.trim();
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  cleaned = cleaned.trim();
+  // Remove trailing commas in arrays/objects
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+  return cleaned;
+}
+
+function safeJsonParse<T = any>(str: string): T {
+  const cleaned = cleanJsonString(str);
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch (err: any) {
+    console.error("Failed to parse JSON string. Raw input was:\n", str);
+    console.error("Cleaned input was:\n", cleaned);
+    throw err;
+  }
+}
+
 // ─── Process single word via Gemini ────────────────────────────────
 async function askGemini(rawWord: string, contextSentence: string): Promise<any> {
   const prompt = `You are a German language teacher fluent in both English and Vietnamese.
@@ -87,6 +114,7 @@ For each profession:
 - caution_vn: Common pitfalls or false friends explained in Vietnamese
 
 CRITICAL: The sentence before the brackets [...] MUST be the original German sentence. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
+CRITICAL: The output must be pure, valid JSON matching the exact schema below. Do not include any JSON comments, ellipsis (...), or placeholders. The "usages" array must contain exactly 7 complete object entries, one for each of the 7 professions.
 
 Provide the response as a JSON object matching this schema:
 {
@@ -135,7 +163,7 @@ Provide the response as a JSON object matching this schema:
         const data = await res.json() as any;
         const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (replyText) {
-          return JSON.parse(replyText);
+          return safeJsonParse(replyText);
         }
         lastError = new Error(`Empty response from ${model}`);
       } else {

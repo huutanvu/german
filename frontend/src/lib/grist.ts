@@ -66,8 +66,32 @@ async function callGemini(
     }
   }
   throw lastError ?? new Error("All Gemini models failed");
+}function cleanJsonString(str: string): string {
+  let cleaned = str.trim();
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  cleaned = cleaned.trim();
+  // Remove trailing commas in arrays/objects
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+  return cleaned;
 }
 
+function safeJsonParse<T = any>(str: string): T {
+  const cleaned = cleanJsonString(str);
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch (err: any) {
+    console.error("Failed to parse JSON string. Raw input was:\n", str);
+    console.error("Cleaned input was:\n", cleaned);
+    throw err;
+  }
+}
 
 
 async function gristGet<T>(path: string): Promise<T> {
@@ -120,6 +144,30 @@ async function getUserIdFromCookie(): Promise<string | undefined> {
   }
 }
 
+async function getProfileProfession(userId?: string): Promise<string> {
+  if (!userId) return 'software_engineer';
+  try {
+    const store = await cookies();
+    const token = store.get('sb-access-token')?.value;
+    if (!token) return 'software_engineer';
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
+          Authorization: `Bearer ${token}`,
+        }
+      }
+    );
+    if (!res.ok) return 'software_engineer';
+    const rows = await res.json();
+    return rows?.[0]?.profession ?? 'software_engineer';
+  } catch {
+    return 'software_engineer';
+  }
+}
+
 // ─── Learning Context ───────────────────────────────────────────
 
 export async function getLearningContext(userId?: string): Promise<LearningContext | null> {
@@ -164,14 +212,76 @@ export async function listVocabulary(
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
     : "";
 
-  return gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
+  const res = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
+
+  // Resolve custom profession usage overrides
+  try {
+    const userProfession = await getProfileProfession(resolvedUserId);
+    if (userProfession && userProfession !== 'software_engineer' && res.records.length > 0) {
+      const vocabIds = res.records.map(r => r.id);
+      const usagesQuery = `?filter=${encodeURIComponent(JSON.stringify({ vocabId: vocabIds, profession: [userProfession] }))}`;
+      const usagesRes = await gristGet<GristResponse<VocabularyUsageFields>>(`/tables/VocabularyUsage/records${usagesQuery}`);
+      const usagesMap = new Map<number, any>();
+
+      for (const record of usagesRes.records) {
+        const vId = Array.isArray(record.fields.vocabId) ? record.fields.vocabId[1] : record.fields.vocabId;
+        if (typeof vId === 'number') {
+          usagesMap.set(vId, record.fields);
+        }
+      }
+
+      for (const record of res.records) {
+        const usage = usagesMap.get(record.id);
+        if (usage) {
+          if (usage.dailyUse) record.fields.dailyUse = usage.dailyUse;
+          if (usage.dailyUse_vn) record.fields.dailyUse_vn = usage.dailyUse_vn;
+          if (usage.professionalUse) record.fields.professionalUse = usage.professionalUse;
+          if (usage.professionalUse_vn) record.fields.professionalUse_vn = usage.professionalUse_vn;
+          if (usage.tips) record.fields.tips = usage.tips;
+          if (usage.tips_vn) record.fields.tips_vn = usage.tips_vn;
+          if (usage.caution) record.fields.caution = usage.caution;
+          if (usage.caution_vn) record.fields.caution_vn = usage.caution_vn;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to merge vocabulary usages in listVocabulary:", err);
+  }
+
+  return res;
 }
 
 export async function getVocabularyByWord(word: string | string[]): Promise<Vocabulary | null> {
+  const resolvedUserId = await getUserIdFromCookie();
   const words = Array.isArray(word) ? word : [word];
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ word: words }))}`;
+  const filters: Record<string, any[]> = { word: words };
+  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
   const res = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
-  return res.records.length > 0 ? res.records[0] : null;
+  const item = res.records.length > 0 ? res.records[0] : null;
+
+  if (item && resolvedUserId) {
+    try {
+      const userProfession = await getProfileProfession(resolvedUserId);
+      if (userProfession && userProfession !== 'software_engineer') {
+        const usage = await getVocabularyUsageForUser(item.id, userProfession);
+        if (usage) {
+          if (usage.fields.dailyUse) item.fields.dailyUse = usage.fields.dailyUse;
+          if (usage.fields.dailyUse_vn) item.fields.dailyUse_vn = usage.fields.dailyUse_vn;
+          if (usage.fields.professionalUse) item.fields.professionalUse = usage.fields.professionalUse;
+          if (usage.fields.professionalUse_vn) item.fields.professionalUse_vn = usage.fields.professionalUse_vn;
+          if (usage.fields.tips) item.fields.tips = usage.fields.tips;
+          if (usage.fields.tips_vn) item.fields.tips_vn = usage.fields.tips_vn;
+          if (usage.fields.caution) item.fields.caution = usage.fields.caution;
+          if (usage.fields.caution_vn) item.fields.caution_vn = usage.fields.caution_vn;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to merge vocabulary usage in getVocabularyByWord:", err);
+    }
+  }
+
+  return item;
 }
 
 export async function createVocabulary(
@@ -455,7 +565,7 @@ Response format: { "resolvedWord": "..." }`;
     generationConfig: { responseMimeType: "application/json" },
   });
 
-  const parsed = JSON.parse(replyText);
+  const parsed = safeJsonParse(replyText);
   return parsed.resolvedWord as string;
 }
 
@@ -491,6 +601,7 @@ For each profession:
 - caution_vn: Common pitfalls or false friends explained in Vietnamese
 
 CRITICAL: The sentence before the brackets [...] MUST be the original German sentence. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
+CRITICAL: The output must be pure, valid JSON matching the exact schema below. Do not include any JSON comments, ellipsis (...), or placeholders. The "usages" array must contain exactly 7 complete object entries, one for each of the 7 professions.
 
 Provide the response as a JSON object matching this schema:
 {
@@ -520,7 +631,7 @@ Provide the response as a JSON object matching this schema:
     generationConfig: { responseMimeType: "application/json" },
   });
 
-  const parsed = JSON.parse(replyText);
+  const parsed = safeJsonParse(replyText);
 
   // Extract software_engineer or general to use as baseline
   const baseline = parsed.usages.find((u: any) => u.profession === "software_engineer") || parsed.usages[0];
