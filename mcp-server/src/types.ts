@@ -45,12 +45,8 @@ export interface VocabularyReviewFields {
 export interface WritingPracticeFields {
   topic: string;
   description: string;
-  userParagraph: string;
-  correctedParagraph: string;
-  correctionsJson: string;
-  status: string;
-  date: string;
-  userId?: string;
+  profession?: string;
+  level?: string;
 }
 
 export interface ReadingPracticeFields {
@@ -58,25 +54,73 @@ export interface ReadingPracticeFields {
   germanText: string;
   audioFileId: string;
   questionsJson: string;
-  userAnswersJson: string;
-  correctionsJson: string;
-  status: string;
-  date: string;
-  userId?: string;
+  profession?: string;
+  level?: string;
 }
 
 export interface SpeakingPracticeFields {
   topic: string;
   targetText: string;
+  targetAudioFileId: string;
+  profession?: string;
+  level?: string;
+}
+
+export interface GrammarPracticeFields {
+  topic: string;
+  description: string;
+  questionsJson: string;
+  profession?: string;
+  level?: string;
+}
+
+export interface ReadingPracticeSubmissionFields {
+  practiceId: number | [string, number];
+  userId: string;
+  userAnswersJson: string;
+  correctionsJson: string;
+  correctionsJson_vn?: string;
+  status: string;
+  date: string;
+  updatedAt?: string;
+}
+
+export interface WritingPracticeSubmissionFields {
+  practiceId: number | [string, number];
+  userId: string;
+  userParagraph: string;
+  correctedParagraph: string;
+  correctionsJson: string;
+  correctionsJson_vn?: string;
+  status: string;
+  date: string;
+  updatedAt?: string;
+}
+
+export interface SpeakingPracticeSubmissionFields {
+  practiceId: number | [string, number];
+  userId: string;
   userAudioFileId: string;
   transcript: string;
   grammarFeedback: string;
+  grammarFeedback_vn?: string;
   pronunciationFeedback: string;
-  targetAudioFileId: string;
+  pronunciationFeedback_vn?: string;
   score: number;
   status: string;
   date: string;
-  userId?: string;
+  updatedAt?: string;
+}
+
+export interface GrammarPracticeSubmissionFields {
+  practiceId: number | [string, number];
+  userId: string;
+  userAnswersJson: string;
+  correctionsJson: string;
+  correctionsJson_vn?: string;
+  status: string;
+  date: string;
+  updatedAt?: string;
 }
 
 export interface VocabularyUsageFields {
@@ -91,4 +135,6 @@ export interface VocabularyUsageFields {
   caution: string;
   caution_vn?: string;
   createdAt?: string;
+  userId?: string;
 }
+

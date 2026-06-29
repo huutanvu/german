@@ -121,6 +121,15 @@ export function Navbar() {
                     >
                       {t("Profile", "Hồ sơ")}
                     </Link>
+                    {user.userId === 'd68f7a67-42fb-43b2-a1c7-1108eb99150a' && (
+                      <Link
+                        href="/submit-exercise"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-t border-gray-100 dark:border-slate-850"
+                      >
+                        {t("Submit Exercise", "Nộp bài tập")}
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);

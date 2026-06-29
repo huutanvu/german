@@ -6,7 +6,8 @@ import { listWritingPractices } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 import type { WritingPractice } from "@/lib/types";
 
-type SortField = "date-desc" | "date-asc" | "status";
+type SortField = "date-desc" | "date-asc" | "status" | "level-asc" | "level-desc";
+const LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
 export default function WritingDashboard() {
   const { language, t } = useLanguage();
@@ -37,6 +38,10 @@ export default function WritingDashboard() {
         return b.fields.date.localeCompare(a.fields.date);
       } else if (sortBy === "date-asc") {
         return a.fields.date.localeCompare(b.fields.date);
+      } else if (sortBy === "level-asc") {
+        return LEVEL_ORDER.indexOf(a.fields.level || 'B1') - LEVEL_ORDER.indexOf(b.fields.level || 'B1');
+      } else if (sortBy === "level-desc") {
+        return LEVEL_ORDER.indexOf(b.fields.level || 'B1') - LEVEL_ORDER.indexOf(a.fields.level || 'B1');
       } else {
         return a.fields.status.localeCompare(b.fields.status);
       }
@@ -78,6 +83,8 @@ export default function WritingDashboard() {
             >
               <option value="date-desc">{t("Newest First", "Mới nhất trước")}</option>
               <option value="date-asc">{t("Oldest First", "Cũ nhất trước")}</option>
+              <option value="level-asc">{t("Level (A1-C2)", "Trình độ tăng dần")}</option>
+              <option value="level-desc">{t("Level (C2-A1)", "Trình độ giảm dần")}</option>
               <option value="status">{t("Status", "Trạng thái")}</option>
             </select>
           </div>

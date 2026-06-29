@@ -18,6 +18,10 @@ import type {
   ReadingPractice,
   GrammarPractice,
   SpeakingPractice,
+  ReadingPracticeSubmissionFields,
+  WritingPracticeSubmissionFields,
+  SpeakingPracticeSubmissionFields,
+  GrammarPracticeSubmissionFields,
 } from "./types";
 
 const GRIST_URL = process.env.GRIST_URL ?? process.env.NEXT_PUBLIC_GRIST_URL ?? "https://docs.getgrist.com/api";
@@ -144,12 +148,23 @@ async function getUserIdFromCookie(): Promise<string | undefined> {
   }
 }
 
-async function getProfileProfession(userId?: string): Promise<string> {
-  if (!userId) return 'software_engineer';
+const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
+function isLevelLowerOrEqual(itemLevel: string, userLevel: string): boolean {
+  const itemIdx = LEVEL_ORDER.indexOf(itemLevel);
+  const userIdx = LEVEL_ORDER.indexOf(userLevel);
+  if (itemIdx === -1) return true; // Show by default if level is missing
+  if (userIdx === -1) return true;
+  return itemIdx <= userIdx;
+}
+
+async function getUserProfileFromSupabase(userId?: string): Promise<{ profession: string; targetLevel: string }> {
+  const defaultProfile = { profession: 'software_engineer', targetLevel: 'B1' };
+  if (!userId) return defaultProfile;
   try {
     const store = await cookies();
     const token = store.get('sb-access-token')?.value;
-    if (!token) return 'software_engineer';
+    if (!token) return defaultProfile;
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
@@ -160,12 +175,20 @@ async function getProfileProfession(userId?: string): Promise<string> {
         }
       }
     );
-    if (!res.ok) return 'software_engineer';
+    if (!res.ok) return defaultProfile;
     const rows = await res.json();
-    return rows?.[0]?.profession ?? 'software_engineer';
+    return {
+      profession: rows?.[0]?.profession ?? 'software_engineer',
+      targetLevel: rows?.[0]?.targetLevel ?? 'B1',
+    };
   } catch {
-    return 'software_engineer';
+    return defaultProfile;
   }
+}
+
+async function getProfileProfession(userId?: string): Promise<string> {
+  const profile = await getUserProfileFromSupabase(userId);
+  return profile.profession;
 }
 
 // ─── Learning Context ───────────────────────────────────────────
@@ -352,27 +375,117 @@ export async function listWritingPractices(
   userId?: string
 ): Promise<GristResponse<WritingPracticeFields>> {
   const resolvedUserId = userId || (await getUserIdFromCookie());
-  const filters: Record<string, string[]> = {};
-  if (status) filters.status = [status];
-  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const profile = await getUserProfileFromSupabase(resolvedUserId);
+  const userProfession = profile.profession;
+  const userLevel = profile.targetLevel;
 
-  const query = Object.keys(filters).length
-    ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
-    : "";
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const templates = await gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records${query}`);
 
-  return gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records${query}`);
+  // Filter templates locally by level <= userLevel
+  templates.records = templates.records.filter(r => isLevelLowerOrEqual(r.fields.level || 'B1', userLevel));
+
+  if (templates.records.length === 0) return templates;
+
+  let subsMap = new Map<number, any>();
+  if (resolvedUserId) {
+    const practiceIds = templates.records.map((t) => t.id);
+    const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: practiceIds }))}`;
+    const subs = await gristGet<GristResponse<WritingPracticeSubmissionFields>>(`/tables/WritingPracticeSubmission/records${subQuery}`);
+    for (const s of subs.records) {
+      const pId = Array.isArray(s.fields.practiceId) ? s.fields.practiceId[1] : s.fields.practiceId;
+      if (typeof pId === 'number') subsMap.set(pId, s.fields);
+    }
+  }
+
+  for (const r of templates.records) {
+    const sub = subsMap.get(r.id);
+    if (sub) {
+      Object.assign(r.fields, {
+        userParagraph: sub.userParagraph,
+        correctedParagraph: sub.correctedParagraph,
+        correctionsJson: sub.correctionsJson,
+        correctionsJson_vn: sub.correctionsJson_vn,
+        status: sub.status,
+        date: sub.date,
+      });
+    } else {
+      Object.assign(r.fields, {
+        userParagraph: "",
+        correctedParagraph: "",
+        correctionsJson: "",
+        status: 'pending_user',
+        date: new Date().toISOString().split("T")[0],
+      });
+    }
+  }
+
+  if (status) {
+    templates.records = templates.records.filter((r) => (r.fields as any).status === status);
+  }
+
+  return templates;
+}
+
+export async function getWritingPractice(id: number): Promise<WritingPractice | null> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) return null;
+
+  const templates = await gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`);
+  const template = templates.records.length > 0 ? templates.records[0] : null;
+  if (!template) return null;
+
+  const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: [id] }))}`;
+  const subs = await gristGet<GristResponse<WritingPracticeSubmissionFields>>(`/tables/WritingPracticeSubmission/records${subQuery}`);
+  const sub = subs.records.length > 0 ? subs.records[0] : null;
+
+  if (sub) {
+    Object.assign(template.fields, {
+      userParagraph: sub.fields.userParagraph,
+      correctedParagraph: sub.fields.correctedParagraph,
+      correctionsJson: sub.fields.correctionsJson,
+      correctionsJson_vn: sub.fields.correctionsJson_vn,
+      status: sub.fields.status,
+      date: sub.fields.date,
+    });
+  } else {
+    Object.assign(template.fields, {
+      userParagraph: "",
+      correctedParagraph: "",
+      correctionsJson: "",
+      status: 'pending_user',
+      date: new Date().toISOString().split("T")[0],
+    });
+  }
+
+  return template as any;
 }
 
 export async function upsertWritingPractice(
   topic: string,
-  fields: Partial<WritingPracticeFields>
+  fields: Partial<WritingPracticeSubmissionFields>
 ): Promise<void> {
-  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
-  await gristWrite("PUT", "/tables/WritingPractice/records", {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) throw new Error("Unauthorized");
+
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ topic: [topic] }))}`;
+  const templates = await gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records${query}`);
+  if (templates.records.length === 0) {
+    throw new Error(`WritingPractice template not found for topic: ${topic}`);
+  }
+  const practiceId = templates.records[0].id;
+
+  await gristWrite("PUT", "/tables/WritingPracticeSubmission/records", {
     records: [
       {
-        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        require: { practiceId, userId: resolvedUserId },
+        fields: {
+          ...fields,
+          practiceId,
+          userId: resolvedUserId,
+          date: fields.date || new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString(),
+        },
       },
     ],
   });
@@ -385,27 +498,113 @@ export async function listReadingPractices(
   userId?: string
 ): Promise<GristResponse<ReadingPracticeFields>> {
   const resolvedUserId = userId || (await getUserIdFromCookie());
-  const filters: Record<string, string[]> = {};
-  if (status) filters.status = [status];
-  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const profile = await getUserProfileFromSupabase(resolvedUserId);
+  const userProfession = profile.profession;
+  const userLevel = profile.targetLevel;
 
-  const query = Object.keys(filters).length
-    ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
-    : "";
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const templates = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
 
-  return gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
+  // Filter templates locally by level <= userLevel
+  templates.records = templates.records.filter(r => isLevelLowerOrEqual(r.fields.level || 'B1', userLevel));
+
+  if (templates.records.length === 0) return templates;
+
+  let subsMap = new Map<number, any>();
+  if (resolvedUserId) {
+    const practiceIds = templates.records.map((t) => t.id);
+    const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: practiceIds }))}`;
+    const subs = await gristGet<GristResponse<ReadingPracticeSubmissionFields>>(`/tables/ReadingPracticeSubmission/records${subQuery}`);
+    for (const s of subs.records) {
+      const pId = Array.isArray(s.fields.practiceId) ? s.fields.practiceId[1] : s.fields.practiceId;
+      if (typeof pId === 'number') subsMap.set(pId, s.fields);
+    }
+  }
+
+  for (const r of templates.records) {
+    const sub = subsMap.get(r.id);
+    if (sub) {
+      Object.assign(r.fields, {
+        userAnswersJson: sub.userAnswersJson,
+        correctionsJson: sub.correctionsJson,
+        correctionsJson_vn: sub.correctionsJson_vn,
+        status: sub.status,
+        date: sub.date,
+      });
+    } else {
+      Object.assign(r.fields, {
+        userAnswersJson: "",
+        correctionsJson: "",
+        status: 'pending_user',
+        date: new Date().toISOString().split("T")[0],
+      });
+    }
+  }
+
+  if (status) {
+    templates.records = templates.records.filter((r) => (r.fields as any).status === status);
+  }
+
+  return templates;
+}
+
+export async function getReadingPractice(id: number): Promise<ReadingPractice | null> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) return null;
+
+  const templates = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`);
+  const template = templates.records.length > 0 ? templates.records[0] : null;
+  if (!template) return null;
+
+  const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: [id] }))}`;
+  const subs = await gristGet<GristResponse<ReadingPracticeSubmissionFields>>(`/tables/ReadingPracticeSubmission/records${subQuery}`);
+  const sub = subs.records.length > 0 ? subs.records[0] : null;
+
+  if (sub) {
+    Object.assign(template.fields, {
+      userAnswersJson: sub.fields.userAnswersJson,
+      correctionsJson: sub.fields.correctionsJson,
+      correctionsJson_vn: sub.fields.correctionsJson_vn,
+      status: sub.fields.status,
+      date: sub.fields.date,
+    });
+  } else {
+    Object.assign(template.fields, {
+      userAnswersJson: "",
+      correctionsJson: "",
+      status: 'pending_user',
+      date: new Date().toISOString().split("T")[0],
+    });
+  }
+
+  return template as any;
 }
 
 export async function upsertReadingPractice(
   topic: string,
-  fields: Partial<ReadingPracticeFields>
+  fields: Partial<ReadingPracticeSubmissionFields>
 ): Promise<void> {
-  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
-  await gristWrite("PUT", "/tables/ReadingPractice/records", {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) throw new Error("Unauthorized");
+
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ topic: [topic] }))}`;
+  const templates = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
+  if (templates.records.length === 0) {
+    throw new Error(`ReadingPractice template not found for topic: ${topic}`);
+  }
+  const practiceId = templates.records[0].id;
+
+  await gristWrite("PUT", "/tables/ReadingPracticeSubmission/records", {
     records: [
       {
-        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        require: { practiceId, userId: resolvedUserId },
+        fields: {
+          ...fields,
+          practiceId,
+          userId: resolvedUserId,
+          date: fields.date || new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString(),
+        },
       },
     ],
   });
@@ -418,27 +617,113 @@ export async function listGrammarPractices(
   userId?: string
 ): Promise<GristResponse<GrammarPracticeFields>> {
   const resolvedUserId = userId || (await getUserIdFromCookie());
-  const filters: Record<string, string[]> = {};
-  if (status) filters.status = [status];
-  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const profile = await getUserProfileFromSupabase(resolvedUserId);
+  const userProfession = profile.profession;
+  const userLevel = profile.targetLevel;
 
-  const query = Object.keys(filters).length
-    ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
-    : "";
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const templates = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
 
-  return gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
+  // Filter templates locally by level <= userLevel
+  templates.records = templates.records.filter(r => isLevelLowerOrEqual(r.fields.level || 'B1', userLevel));
+
+  if (templates.records.length === 0) return templates;
+
+  let subsMap = new Map<number, any>();
+  if (resolvedUserId) {
+    const practiceIds = templates.records.map((t) => t.id);
+    const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: practiceIds }))}`;
+    const subs = await gristGet<GristResponse<GrammarPracticeSubmissionFields>>(`/tables/GrammarPracticeSubmission/records${subQuery}`);
+    for (const s of subs.records) {
+      const pId = Array.isArray(s.fields.practiceId) ? s.fields.practiceId[1] : s.fields.practiceId;
+      if (typeof pId === 'number') subsMap.set(pId, s.fields);
+    }
+  }
+
+  for (const r of templates.records) {
+    const sub = subsMap.get(r.id);
+    if (sub) {
+      Object.assign(r.fields, {
+        userAnswersJson: sub.userAnswersJson,
+        correctionsJson: sub.correctionsJson,
+        correctionsJson_vn: sub.correctionsJson_vn,
+        status: sub.status,
+        date: sub.date,
+      });
+    } else {
+      Object.assign(r.fields, {
+        userAnswersJson: "",
+        correctionsJson: "",
+        status: 'pending_user',
+        date: new Date().toISOString().split("T")[0],
+      });
+    }
+  }
+
+  if (status) {
+    templates.records = templates.records.filter((r) => (r.fields as any).status === status);
+  }
+
+  return templates;
+}
+
+export async function getGrammarPractice(id: number): Promise<GrammarPractice | null> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) return null;
+
+  const templates = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`);
+  const template = templates.records.length > 0 ? templates.records[0] : null;
+  if (!template) return null;
+
+  const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: [id] }))}`;
+  const subs = await gristGet<GristResponse<GrammarPracticeSubmissionFields>>(`/tables/GrammarPracticeSubmission/records${subQuery}`);
+  const sub = subs.records.length > 0 ? subs.records[0] : null;
+
+  if (sub) {
+    Object.assign(template.fields, {
+      userAnswersJson: sub.fields.userAnswersJson,
+      correctionsJson: sub.fields.correctionsJson,
+      correctionsJson_vn: sub.fields.correctionsJson_vn,
+      status: sub.fields.status,
+      date: sub.fields.date,
+    });
+  } else {
+    Object.assign(template.fields, {
+      userAnswersJson: "",
+      correctionsJson: "",
+      status: 'pending_user',
+      date: new Date().toISOString().split("T")[0],
+    });
+  }
+
+  return template as any;
 }
 
 export async function upsertGrammarPractice(
   topic: string,
-  fields: Partial<GrammarPracticeFields>
+  fields: Partial<GrammarPracticeSubmissionFields>
 ): Promise<void> {
-  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
-  await gristWrite("PUT", "/tables/GrammarPractice/records", {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) throw new Error("Unauthorized");
+
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ topic: [topic] }))}`;
+  const templates = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
+  if (templates.records.length === 0) {
+    throw new Error(`GrammarPractice template not found for topic: ${topic}`);
+  }
+  const practiceId = templates.records[0].id;
+
+  await gristWrite("PUT", "/tables/GrammarPracticeSubmission/records", {
     records: [
       {
-        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        require: { practiceId, userId: resolvedUserId },
+        fields: {
+          ...fields,
+          practiceId,
+          userId: resolvedUserId,
+          date: fields.date || new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString(),
+        },
       },
     ],
   });
@@ -451,52 +736,156 @@ export async function listSpeakingPractices(
   userId?: string
 ): Promise<GristResponse<SpeakingPracticeFields>> {
   const resolvedUserId = userId || (await getUserIdFromCookie());
-  const filters: Record<string, string[]> = {};
-  if (status) filters.status = [status];
-  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const profile = await getUserProfileFromSupabase(resolvedUserId);
+  const userProfession = profile.profession;
+  const userLevel = profile.targetLevel;
 
-  const query = Object.keys(filters).length
-    ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
-    : "";
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const templates = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
 
-  return gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
+  // Filter templates locally by level <= userLevel
+  templates.records = templates.records.filter(r => isLevelLowerOrEqual(r.fields.level || 'B1', userLevel));
+
+  if (templates.records.length === 0) return templates;
+
+  let subsMap = new Map<number, any>();
+  if (resolvedUserId) {
+    const practiceIds = templates.records.map((t) => t.id);
+    const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: practiceIds }))}`;
+    const subs = await gristGet<GristResponse<SpeakingPracticeSubmissionFields>>(`/tables/SpeakingPracticeSubmission/records${subQuery}`);
+    for (const s of subs.records) {
+      const pId = Array.isArray(s.fields.practiceId) ? s.fields.practiceId[1] : s.fields.practiceId;
+      if (typeof pId === 'number') subsMap.set(pId, s.fields);
+    }
+  }
+
+  for (const r of templates.records) {
+    const sub = subsMap.get(r.id);
+    if (sub) {
+      Object.assign(r.fields, {
+        userAudioFileId: sub.userAudioFileId,
+        transcript: sub.transcript,
+        grammarFeedback: sub.grammarFeedback,
+        grammarFeedback_vn: sub.grammarFeedback_vn,
+        pronunciationFeedback: sub.pronunciationFeedback,
+        pronunciationFeedback_vn: sub.pronunciationFeedback_vn,
+        score: sub.score,
+        status: sub.status,
+        date: sub.date,
+      });
+    } else {
+      Object.assign(r.fields, {
+        userAudioFileId: "",
+        transcript: "",
+        grammarFeedback: "",
+        pronunciationFeedback: "",
+        score: 0,
+        status: 'pending_recording',
+        date: new Date().toISOString().split("T")[0],
+      });
+    }
+  }
+
+  if (status) {
+    templates.records = templates.records.filter((r) => (r.fields as any).status === status);
+  }
+
+  return templates;
+}
+
+export async function getSpeakingPractice(id: number): Promise<SpeakingPractice | null> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) return null;
+
+  const templates = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`);
+  const template = templates.records.length > 0 ? templates.records[0] : null;
+  if (!template) return null;
+
+  const subQuery = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId], practiceId: [id] }))}`;
+  const subs = await gristGet<GristResponse<SpeakingPracticeSubmissionFields>>(`/tables/SpeakingPracticeSubmission/records${subQuery}`);
+  const sub = subs.records.length > 0 ? subs.records[0] : null;
+
+  if (sub) {
+    Object.assign(template.fields, {
+      userAudioFileId: sub.fields.userAudioFileId,
+      transcript: sub.fields.transcript,
+      grammarFeedback: sub.fields.grammarFeedback,
+      grammarFeedback_vn: sub.fields.grammarFeedback_vn,
+      pronunciationFeedback: sub.fields.pronunciationFeedback,
+      pronunciationFeedback_vn: sub.fields.pronunciationFeedback_vn,
+      score: sub.fields.score,
+      status: sub.fields.status,
+      date: sub.fields.date,
+    });
+  } else {
+    Object.assign(template.fields, {
+      userAudioFileId: "",
+      transcript: "",
+      grammarFeedback: "",
+      pronunciationFeedback: "",
+      score: 0,
+      status: 'pending_recording',
+      date: new Date().toISOString().split("T")[0],
+    });
+  }
+
+  return template as any;
 }
 
 export async function upsertSpeakingPractice(
   topic: string,
-  fields: Partial<SpeakingPracticeFields>
+  fields: Partial<SpeakingPracticeSubmissionFields>
 ): Promise<void> {
-  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
-  await gristWrite("PUT", "/tables/SpeakingPractice/records", {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) throw new Error("Unauthorized");
+
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ topic: [topic] }))}`;
+  const templates = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
+  if (templates.records.length === 0) {
+    throw new Error(`SpeakingPractice template not found for topic: ${topic}`);
+  }
+  const practiceId = templates.records[0].id;
+
+  await gristWrite("PUT", "/tables/SpeakingPracticeSubmission/records", {
     records: [
       {
-        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        require: { practiceId, userId: resolvedUserId },
+        fields: {
+          ...fields,
+          practiceId,
+          userId: resolvedUserId,
+          date: fields.date || new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString(),
+        },
       },
     ],
   });
 }
+
 export async function createSpeakingPractice(
   topic: string,
   targetText: string,
   fields: Partial<SpeakingPracticeFields>
 ): Promise<SpeakingPractice> {
-  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
+  const resolvedUserId = await getUserIdFromCookie();
+  const userProfession = await getProfileProfession(resolvedUserId);
+
   const res = await gristWrite<{ records: any[] }>("POST", "/tables/SpeakingPractice/records", {
     records: [
       {
         fields: {
           topic,
           targetText,
-          ...fields,
-          date: new Date().toISOString().split("T")[0],
-          ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+          profession: userProfession,
+          targetAudioFileId: fields.targetAudioFileId || "",
+          createdAt: new Date().toISOString(),
         },
       },
     ],
   });
   return res.records[0] as SpeakingPractice;
 }
+
 export async function updateSpeakingPractice(
   id: number,
   fields: Partial<SpeakingPracticeFields>
@@ -509,41 +898,6 @@ export async function updateSpeakingPractice(
       },
     ],
   });
-}
-export async function getReadingPractice(id: number): Promise<ReadingPractice | null> {
-  const resolvedUserId = await getUserIdFromCookie();
-  const filters: Record<string, any[]> = { id: [id] };
-  if (resolvedUserId) filters.userId = [resolvedUserId];
-  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
-  const res = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
-  return res.records.length > 0 ? res.records[0] : null;
-}
-
-export async function getGrammarPractice(id: number): Promise<GrammarPractice | null> {
-  const resolvedUserId = await getUserIdFromCookie();
-  const filters: Record<string, any[]> = { id: [id] };
-  if (resolvedUserId) filters.userId = [resolvedUserId];
-  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
-  const res = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
-  return res.records.length > 0 ? res.records[0] : null;
-}
-
-export async function getWritingPractice(id: number): Promise<WritingPractice | null> {
-  const resolvedUserId = await getUserIdFromCookie();
-  const filters: Record<string, any[]> = { id: [id] };
-  if (resolvedUserId) filters.userId = [resolvedUserId];
-  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
-  const res = await gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records${query}`);
-  return res.records.length > 0 ? res.records[0] : null;
-}
-
-export async function getSpeakingPractice(id: number): Promise<SpeakingPractice | null> {
-  const resolvedUserId = await getUserIdFromCookie();
-  const filters: Record<string, any[]> = { id: [id] };
-  if (resolvedUserId) filters.userId = [resolvedUserId];
-  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
-  const res = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
-  return res.records.length > 0 ? res.records[0] : null;
 }
 
 export async function resolveWordWithGemini(clickedWord: string, contextSentence: string): Promise<string> {
@@ -633,9 +987,6 @@ Provide the response as a JSON object matching this schema:
 
   const parsed = safeJsonParse(replyText);
 
-  // Extract software_engineer or general to use as baseline
-  const baseline = parsed.usages.find((u: any) => u.profession === "software_engineer") || parsed.usages[0];
-
   const gristRes = await createVocabulary({
     word: parsed.word,
     meanings: parsed.meanings,
@@ -644,14 +995,6 @@ Provide the response as a JSON object matching this schema:
     type: "new",
     grammar: parsed.grammar,
     grammar_vn: parsed.grammar_vn,
-    dailyUse: baseline.dailyUse,
-    dailyUse_vn: baseline.dailyUse_vn,
-    professionalUse: baseline.professionalUse,
-    professionalUse_vn: baseline.professionalUse_vn,
-    tips: baseline.tips,
-    tips_vn: baseline.tips_vn,
-    caution: baseline.caution,
-    caution_vn: baseline.caution_vn,
     isProcessed: true,
     ...(resolvedUserId ? { userId: resolvedUserId } : {}),
   });
@@ -718,4 +1061,29 @@ export async function getVocabularyUsageForUser(
   const res = await listVocabularyUsage(vocabId, profession);
   return res.records.length > 0 ? res.records[0] : null;
 }
+
+export async function addPracticeTemplate(
+  type: 'reading' | 'writing' | 'speaking' | 'grammar',
+  fields: any
+): Promise<any> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (resolvedUserId !== 'd68f7a67-42fb-43b2-a1c7-1108eb99150a') {
+    throw new Error("Unauthorized access. Access restricted to administrator.");
+  }
+
+  const tableMap = {
+    reading: 'ReadingPractice',
+    writing: 'WritingPractice',
+    speaking: 'SpeakingPractice',
+    grammar: 'GrammarPractice'
+  };
+
+  const table = tableMap[type];
+  if (!table) throw new Error("Invalid practice type");
+
+  return gristWrite('POST', `/tables/${table}/records`, {
+    records: [{ fields: { ...fields, createdAt: new Date().toISOString() } }]
+  });
+}
+
 

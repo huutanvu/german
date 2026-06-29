@@ -249,8 +249,6 @@ async function main() {
       const result = await askGemini(rawWord, context);
       console.log(`Gemini resolved "${rawWord}" -> "${result.word}"`);
 
-      // Extract software_engineer or general to use as baseline
-      const baseline = result.usages.find((u: any) => u.profession === "software_engineer") || result.usages[0];
       const updatePayload = {
         word: result.word,
         meanings: result.meanings,
@@ -258,14 +256,6 @@ async function main() {
         level: result.level || "B1",
         grammar: result.grammar,
         grammar_vn: result.grammar_vn,
-        dailyUse: baseline.dailyUse,
-        dailyUse_vn: baseline.dailyUse_vn,
-        professionalUse: baseline.professionalUse,
-        professionalUse_vn: baseline.professionalUse_vn,
-        tips: baseline.tips,
-        tips_vn: baseline.tips_vn,
-        caution: baseline.caution,
-        caution_vn: baseline.caution_vn,
       };
 
       await updateGrist(record.id, updatePayload);

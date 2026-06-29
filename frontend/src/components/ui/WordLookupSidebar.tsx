@@ -113,10 +113,6 @@ export function WordLookupSidebar({
         level: "B1",
         meanings: "",
         grammar: "",
-        dailyUse: "",
-        professionalUse: "",
-        tips: "",
-        caution: "",
         isProcessed: false,
       });
       setAdded(true);
