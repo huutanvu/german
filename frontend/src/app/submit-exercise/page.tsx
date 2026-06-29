@@ -6,6 +6,7 @@ import { addPracticeTemplate } from '@/lib/grist';
 const SAMPLES = {
   reading: `{
   "profession": "nurse",
+  "level": "B1",
   "topic": "Patientenaufnahme im Krankenhaus",
   "germanText": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrankungen und aktuelle Symptome genau zu dokumentieren.",
   "audioFileId": "example_audio_id",
@@ -13,17 +14,20 @@ const SAMPLES = {
 }`,
   writing: `{
   "profession": "nurse",
+  "level": "B1",
   "topic": "Dokumentation der Wundversorgung",
   "description": "Describe the process of changing a wound dressing for a diabetic patient in German. Focus on hygiene and sterile procedures."
 }`,
   speaking: `{
   "profession": "nurse",
+  "level": "B1",
   "topic": "Beantwortung eines Patientenrufs",
   "targetText": "Guten Tag, Herr Müller. Wie kann ich Ihnen heute helfen? Haben Sie Schmerzen?",
   "targetAudioFileId": "tts_audio_id"
 }`,
   grammar: `{
   "profession": "nurse",
+  "level": "B1",
   "topic": "Präpositionen mit Dativ in der Pflege",
   "description": "Practice prepositions that take the dative case (mit, nach, bei, seit, von, zu) in a medical context.",
   "questionsJson": "[{\\"id\\":1,\\"type\\":\\"fill_in_gap\\",\\"question\\":\\"Ich gehe zu___ Arzt (dem Arzt).\\",\\"options\\":[\\"m\\",\\"r\\",\\"n\\"],\\"correct_answer\\":\\"m\\",\\"difficulty\\":1,\\"explanation\\":\\"zu + dem = zum\\",\\"explanation_vn\\":\\"zu đi với Dativ, der Arzt -> dem Arzt, viết tắt là zum.\\"}]"
@@ -44,7 +48,6 @@ export default function SubmitExercisePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [type, setType] = useState<'reading' | 'writing' | 'speaking' | 'grammar'>('reading');
-  const [level, setLevel] = useState<'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'>('B1');
   const [payload, setPayload] = useState(SAMPLES.reading);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -102,7 +105,10 @@ export default function SubmitExercisePage() {
       return;
     }
 
-    parsed.level = level;
+    if (!parsed.level || !['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(parsed.level)) {
+      setJsonError('JSON must include a valid "level" property (A1, A2, B1, B2, C1, or C2).');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -244,49 +250,25 @@ CRITICAL:
           {/* Main Form */}
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
-                    Practice Type
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['reading', 'writing', 'speaking', 'grammar'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => handleTypeChange(t)}
-                        className={`py-2 px-1 text-xs font-bold rounded-lg border capitalize transition-all cursor-pointer ${
-                          type === t
-                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/10'
-                            : 'bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-900'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
-                    Target Level
-                  </label>
-                  <div className="grid grid-cols-6 gap-1">
-                    {(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const).map((l) => (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => setLevel(l)}
-                        className={`py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                          level === l
-                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/10'
-                            : 'bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-900'
-                        }`}
-                      >
-                        {l}
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+                  Practice Type
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['reading', 'writing', 'speaking', 'grammar'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleTypeChange(t)}
+                      className={`py-2 px-3 text-xs font-bold rounded-lg border capitalize transition-all cursor-pointer ${
+                        type === t
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/10'
+                          : 'bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-900'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
               </div>
 
