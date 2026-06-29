@@ -352,101 +352,150 @@ export default function ReadingDetail({ id }: { id: number }) {
           };
 
           return (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
-                    {t("Questions & Feedback", "Câu hỏi & Nhận xét")}
-                  </h3>
-                  {q.difficulty && (
-                    <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-850 text-gray-600 dark:text-slate-400 text-[10px] font-bold rounded">
-                      Level {q.difficulty}
-                    </span>
-                  )}
-                </div>
-                <span className="text-xs text-gray-500 dark:text-slate-400 font-mono font-bold">
-                  {t("Question", "Câu")} {activeQuestionIdx + 1} {t("of", "trên")} {questions.length}
-                </span>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
 
-              <div className="space-y-4">
-                {/* Question Type Tag */}
-                <div className="flex">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
-                    {q.type === "yes_no" && t("Yes / No", "Đúng / Sai")}
-                    {q.type === "single_selection" && t("Single Choice", "Chọn một đáp án")}
-                    {q.type === "multi_selection" && t("Multiple Choice", "Chọn nhiều đáp án")}
-                    {q.type === "fill_in_gap" && t("Fill in the Blank", "Điền vào chỗ trống")}
+              {/* Main Question Card */}
+              <div className="md:col-span-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-xs flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                      {t("Questions & Feedback", "Câu hỏi & Nhận xét")}
+                    </h3>
+                    {q.difficulty && (
+                      <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 text-[10px] font-bold rounded">
+                        Level {q.difficulty}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-slate-400 font-mono font-bold">
+                    {t("Question", "Câu")} {activeQuestionIdx + 1} {t("of", "trên")} {questions.length}
                   </span>
                 </div>
 
-                {/* Current Question Text */}
-                <div className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
-                  {q.question}
-                </div>
+                <div className="space-y-4">
+                  {/* Question Type Tag */}
+                  <div className="flex">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                      {q.type === "yes_no" && t("Yes / No", "Đúng / Sai")}
+                      {q.type === "single_selection" && t("Single Choice", "Chọn một đáp án")}
+                      {q.type === "multi_selection" && t("Multiple Choice", "Chọn nhiều đáp án")}
+                      {q.type === "fill_in_gap" && t("Fill in the Blank", "Điền vào chỗ trống")}
+                    </span>
+                  </div>
 
-                {/* Answering Choice/Inputs */}
-                {renderQuestionInput()}
+                  {/* Current Question Text */}
+                  <div className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
+                    {q.question}
+                  </div>
 
-                {/* AI Correction/Explanation Panel (if evaluated) */}
-                {exercise.fields.status === "evaluated" && (() => {
-                  const currentCorrection = corrections[activeQuestionIdx];
-                  if (!currentCorrection) return null;
+                  {/* Answering Choice/Inputs */}
+                  {renderQuestionInput()}
 
-                  return (
-                    <div className="space-y-2 mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
-                      <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block">{t("AI Explanation", "Giải thích chi tiết")}</span>
-                      <div className="p-4 bg-emerald-50/20 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/20 rounded-lg text-xs">
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                          {currentCorrection.explanation}
-                        </p>
+                  {/* AI Correction/Explanation Panel (if evaluated) */}
+                  {exercise.fields.status === "evaluated" && (() => {
+                    const currentCorrection = corrections[activeQuestionIdx];
+                    if (!currentCorrection) return null;
+
+                    return (
+                      <div className="space-y-2 mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block">{t("AI Explanation", "Giải thích chi tiết")}</span>
+                        <div className="p-4 bg-emerald-50/20 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/20 rounded-lg text-xs">
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                            {currentCorrection.explanation}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
-              </div>
+                    );
+                  })()}
+                </div>
 
-              {/* Pagination and Submission Controls */}
-              <div className="flex items-center justify-between border-t border-gray-100 dark:border-slate-800 pt-4 mt-2">
-                <button
-                  onClick={() => setActiveQuestionIdx(prev => Math.max(0, prev - 1))}
-                  disabled={activeQuestionIdx === 0}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded disabled:opacity-30 cursor-pointer"
-                >
-                  {t("Previous", "Trước")}
-                </button>
+                {/* Pagination and Submission Controls */}
+                <div className="flex items-center justify-between border-t border-gray-100 dark:border-slate-800 pt-4 mt-2">
+                  <button
+                    onClick={() => setActiveQuestionIdx(prev => Math.max(0, prev - 1))}
+                    disabled={activeQuestionIdx === 0}
+                    className="px-3 py-1.5 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded disabled:opacity-30 cursor-pointer"
+                  >
+                    {t("Previous", "Trước")}
+                  </button>
 
-                <div className="flex gap-2">
-                  {exercise.fields.status === "evaluated" && (
-                    <button
-                      onClick={handleRedo}
-                      className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors"
-                    >
-                      {t("Redo / Try Again", "Làm lại / Thử lại")}
-                    </button>
-                  )}
+                  <div className="flex gap-2">
+                    {exercise.fields.status === "evaluated" && (
+                      <button
+                        onClick={handleRedo}
+                        className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded cursor-pointer transition-colors"
+                      >
+                        {t("Redo / Try Again", "Làm lại / Thử lại")}
+                      </button>
+                    )}
 
-                  {activeQuestionIdx < questions.length - 1 ? (
-                    <button
-                      onClick={() => setActiveQuestionIdx(prev => Math.min(questions.length - 1, prev + 1))}
-                      className="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 text-xs font-semibold rounded cursor-pointer"
-                    >
-                      {t("Next", "Sau")}
-                    </button>
-                  ) : exercise.fields.status === "pending_user" ? (
-                    <button
-                      onClick={handleSubmit}
-                      disabled={submitting || answers.some(a => {
-                        if (Array.isArray(a)) return a.length === 0;
-                        return !String(a || "").trim();
-                      })}
-                      className="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded disabled:opacity-50 cursor-pointer"
-                    >
-                      {submitting ? t("Submitting...", "Đang nộp...") : t("Submit All Answers", "Nộp toàn bộ câu trả lời")}
-                    </button>
-                  ) : null}
+                    {activeQuestionIdx < questions.length - 1 ? (
+                      <button
+                        onClick={() => setActiveQuestionIdx(prev => Math.min(questions.length - 1, prev + 1))}
+                        className="px-4 py-1.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 text-xs font-semibold rounded cursor-pointer"
+                      >
+                        {t("Next", "Sau")}
+                      </button>
+                    ) : exercise.fields.status === "pending_user" ? (
+                      <button
+                        onClick={handleSubmit}
+                        disabled={submitting || answers.some(a => {
+                          if (Array.isArray(a)) return a.length === 0;
+                          return !String(a || "").trim();
+                        })}
+                        className="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded disabled:opacity-50 cursor-pointer"
+                      >
+                        {submitting ? t("Submitting...", "Đang nộp...") : t("Submit All Answers", "Nộp toàn bộ câu trả lời")}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
+
+              {/* Navigation Sidebar */}
+              <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
+                <h3 className="text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+                  {t("Navigation", "Danh sách câu")}
+                </h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {questions.map((item: any, idx: number) => {
+                    const ans = answers[idx];
+                    const hasAnswer = Array.isArray(ans) ? ans.length > 0 : String(ans || "").trim() !== "";
+                    const isActive = idx === activeQuestionIdx;
+
+                    let btnStyle = "border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800";
+                    if (isActive) {
+                      btnStyle = "border-blue-600 bg-blue-600 text-white shadow-sm";
+                    } else if (!isPendingUser) {
+                      const correct = item.correct_answer;
+                      const correctCheck = (() => {
+                        if (item.type === "multi_selection") {
+                          const uArr = Array.isArray(ans) ? ans : [];
+                          const cArr = Array.isArray(correct) ? correct : [];
+                          return uArr.length === cArr.length && uArr.every((x: string) => cArr.includes(x));
+                        }
+                        return String(ans || "").trim().toLowerCase() === String(correct || "").trim().toLowerCase();
+                      })();
+                      btnStyle = correctCheck
+                        ? "border-emerald-500 bg-emerald-50/20 text-emerald-800 dark:text-emerald-300"
+                        : "border-red-500 bg-red-50/10 text-red-800 dark:text-red-300";
+                    } else if (hasAnswer) {
+                      btnStyle = "border-blue-200 bg-blue-50/30 text-blue-900 dark:border-blue-900/50 dark:text-blue-300";
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveQuestionIdx(idx)}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border text-xs font-bold font-mono transition-all cursor-pointer ${btnStyle}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
             </div>
           );
         })()}
