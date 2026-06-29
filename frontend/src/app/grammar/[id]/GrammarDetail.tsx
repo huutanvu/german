@@ -293,7 +293,14 @@ export default function GrammarDetail({ id }: { id: number }) {
               {t("Back to list", "Trở lại danh sách")}
             </button>
             <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">{exercise.fields.topic}</h1>
-            <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed font-sans">{language === "vi" ? exercise.fields.description_vn : exercise.fields.description}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed font-sans">{language === "vi" ? exercise.fields.description_vn : exercise.fields.description}</p>
+              {exercise.fields.level && (
+                <span className="shrink-0 px-2 py-0.5 text-[10px] font-bold rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                  {exercise.fields.level}
+                </span>
+              )}
+            </div>
           </div>
 
           {!isPendingUser && (
@@ -382,7 +389,10 @@ export default function GrammarDetail({ id }: { id: number }) {
                   {isPendingUser ? (
                     <button
                       onClick={handleSubmit}
-                      disabled={submitting}
+                      disabled={submitting || answers.some(a => {
+                        if (Array.isArray(a)) return a.length === 0;
+                        return !String(a || "").trim();
+                      })}
                       className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
                     >
                       {submitting ? t("Submitting...", "Đang chấm...") : t("Submit All Answers", "Nộp tất cả bài làm")}

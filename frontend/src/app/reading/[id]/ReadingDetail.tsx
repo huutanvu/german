@@ -208,7 +208,14 @@ export default function ReadingDetail({ id }: { id: number }) {
         {/* Header */}
         <div className="border-b border-gray-200 dark:border-slate-800 pb-4">
           <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 leading-snug">{exercise.fields.topic}</h1>
-          <span className="text-xs text-gray-400 font-mono block mt-1">{exercise.fields.date}</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-gray-400 font-mono">{exercise.fields.date}</span>
+            {exercise.fields.level && (
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                {exercise.fields.level}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Audio Player */}

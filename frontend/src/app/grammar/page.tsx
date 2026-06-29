@@ -112,17 +112,24 @@ export default function GrammarDashboard() {
                       <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono font-bold">
                         {ex.fields.date}
                       </span>
-                      <span
-                        className={`px-2 py-0.5 text-[9px] font-bold rounded ${
-                          isEvaluated
-                            ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
-                            : "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300"
-                        }`}
-                      >
-                        {isEvaluated
-                          ? t("Completed", "Hoàn thành")
-                          : t("Unfinished", "Chưa làm")}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {ex.fields.level && (
+                          <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                            {ex.fields.level}
+                          </span>
+                        )}
+                        <span
+                          className={`px-2 py-0.5 text-[9px] font-bold rounded ${
+                            isEvaluated
+                              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
+                              : "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300"
+                          }`}
+                        >
+                          {isEvaluated
+                            ? t("Completed", "Hoàn thành")
+                            : t("Unfinished", "Chưa làm")}
+                        </span>
+                      </div>
                     </div>
 
                     <h2 className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-blue-500 transition-colors leading-snug line-clamp-2">
