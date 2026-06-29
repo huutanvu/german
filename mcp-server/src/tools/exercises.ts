@@ -109,6 +109,7 @@ export function registerExerciseTools(server: McpServer) {
           id: r.id,
           topic: r.fields.topic,
           description: r.fields.description,
+          description_vn: r.fields.description_vn ?? '',
           profession: r.fields.profession,
           level: r.fields.level ?? 'B1',
           userParagraph: sub?.userParagraph ?? '',

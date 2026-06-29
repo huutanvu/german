@@ -45,6 +45,7 @@ export interface VocabularyReviewFields {
 export interface WritingPracticeFields {
   topic: string;
   description: string;
+  description_vn?: string;
   profession?: string;
   level?: string;
 }

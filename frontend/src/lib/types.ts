@@ -54,6 +54,7 @@ export interface VocabularyReviewFields {
 export interface WritingPracticeFields {
   topic: string;
   description: string;
+  description_vn: string;
   profession?: string;
   level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   userParagraph: string;

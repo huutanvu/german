@@ -52,7 +52,7 @@ export default function SubmitExercisePage() {
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
-  
+
   // Prompt Generator states
   const [promptProfession, setPromptProfession] = useState('nurse');
   const [promptLevel, setPromptLevel] = useState<'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'>('B1');
@@ -109,6 +109,9 @@ export default function SubmitExercisePage() {
       setJsonError('JSON must include a valid "level" property (A1, A2, B1, B2, C1, or C2).');
       return;
     }
+    if (parsed.questionsJson) {
+      parsed.questionsJson = JSON.stringify(parsed.questionsJson)
+    }
 
     setSubmitting(true);
     try {
@@ -124,28 +127,30 @@ export default function SubmitExercisePage() {
   // Generate the AI Prompt based on selected type, profession and level
   const generatePromptText = () => {
     const profLabel = PROFESSIONS.find(p => p.slug === promptProfession)?.label || promptProfession;
-    
+
     if (type === 'reading') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German reading practice exercise tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+
+Before writing, please search/research the latest news and actual developments regarding the selected topic within this professional field. The German reading passage must be based on actual, real-world current news events or factual reports rather than being generic or fictional.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
-  "germanText": "[A German reading passage of 250-350 words, structured in at least 2 paragraphs. You may use markdown (such as bolding key terms, headers, or bullet lists) inside this string to structure the text and make it easier to read when required]",
+  "germanText": "[A German reading passage of 250-350 words based on the researched news, structured in at least 2 paragraphs. You may use markdown (such as bolding key terms, headers, or bullet lists) inside this string to structure the text and make it easier to read when required]",
   "audioFileId": "",
-  "questionsJson": "[A stringified JSON array containing exactly 10 comprehension and grammar questions of increasing difficulty (1 to 10) testing case endings, prepositions, articles, etc. Each question object matches: {\\\\\\"id\\\\\\": number, \\\\\\"type\\\\\\": \\\\\\"single_selection\\\\\\" | \\\\\\"multi_selection\\\\\\" | \\\\\\"yes_no\\\\\\" | \\\\\\"fill_in_gap\\\\\\", \\\\\\"question\\\\\\": string, \\\\\\"options\\\\\\": string[], \\\\\\"correct_answer\\\\\\": string | string[], \\\\\\"difficulty\\\\\\": number, \\\\\\"explanation\\\\\\": string, \\\\\\"explanation_vn\\\\\\": string}]"
+  "questionsJson": "[A JSON array containing exactly 10 comprehension and grammar questions of increasing difficulty (1 to 10) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]"
 }
 
 CRITICAL: 
 1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. \\"id\\": 1).
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 3. The "topic" field value MUST be written in German.
-4. The "germanText" must be at least 2 paragraphs long and can use markdown formatting where appropriate.`;
+4. The "germanText" must be at least 2 paragraphs long, can use markdown formatting where appropriate, and MUST be strictly based on current news facts related to this topic.`;
     }
-    
+
     if (type === 'writing') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German writing practice topic tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
@@ -156,11 +161,12 @@ Provide the output as a single, valid JSON object matching this schema:
   "level": "${promptLevel}",
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "description": "[A detailed description and instructions in English guiding the user on what to write in German, specifying grammar/lexical goals]"
+  "description_vn": "[A detailed description and instructions in Vietnamese guiding the user on what to write in German, specifying grammar/lexical goals]"
 }
 
 CRITICAL: The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.`;
     }
-    
+
     if (type === 'speaking') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German speaking practice prompt tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
@@ -176,7 +182,7 @@ Provide the output as a single, valid JSON object matching this schema:
 
 CRITICAL: The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.`;
     }
-    
+
     // grammar
     return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German grammar practice drill tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
@@ -187,7 +193,8 @@ Provide the output as a single, valid JSON object matching this schema:
   "level": "${promptLevel}",
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "description": "[Short grammar guidelines/explanation in English]",
-  "questionsJson": "[A stringified JSON array containing exactly 15 grammar questions of increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc. Each question object matches: {\\\\\\"id\\\\\\": number, \\\\\\"type\\\\\\": \\\\\\"single_selection\\\\\\" | \\\\\\"multi_selection\\\\\\" | \\\\\\"yes_no\\\\\\" | \\\\\\"fill_in_gap\\\\\\", \\\\\\"question\\\\\\": string, \\\\\\"options\\\\\\": string[], \\\\\\"correct_answer\\\\\\": string | string[], \\\\\\"difficulty\\\\\\": number, \\\\\\"explanation\\\\\\": string, \\\\\\"explanation_vn\\\\\\": string}]"
+  "description_vn": "[Short grammar guidelines/explanation in Vietnamese]",
+  "questionsJson": "[A JSON array containing exactly 15 grammar questions of increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]"
 }
 
 CRITICAL: 
@@ -260,11 +267,10 @@ CRITICAL:
                       key={t}
                       type="button"
                       onClick={() => handleTypeChange(t)}
-                      className={`py-2 px-3 text-xs font-bold rounded-lg border capitalize transition-all cursor-pointer ${
-                        type === t
+                      className={`py-2 px-3 text-xs font-bold rounded-lg border capitalize transition-all cursor-pointer ${type === t
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/10'
                           : 'bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-900'
-                      }`}
+                        }`}
                     >
                       {t}
                     </button>
@@ -293,11 +299,10 @@ CRITICAL:
 
               {message && (
                 <div
-                  className={`p-3.5 border rounded-xl text-xs font-semibold leading-relaxed ${
-                    message.isError
+                  className={`p-3.5 border rounded-xl text-xs font-semibold leading-relaxed ${message.isError
                       ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400'
                       : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400'
-                  }`}
+                    }`}
                 >
                   {message.isError ? '❌' : '✅'} {message.text}
                 </div>
@@ -370,7 +375,7 @@ CRITICAL:
                 Configure and copy a prompt to generate compliant JSON templates from any AI chatbot.
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
@@ -412,14 +417,13 @@ CRITICAL:
             <pre className="text-xs text-gray-700 dark:text-slate-300 font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto pr-8">
               {generatePromptText()}
             </pre>
-            
+
             <button
               onClick={handleCopyPrompt}
-              className={`absolute top-4 right-4 p-2 rounded-lg border transition-all cursor-pointer ${
-                copied
+              className={`absolute top-4 right-4 p-2 rounded-lg border transition-all cursor-pointer ${copied
                   ? 'bg-emerald-600 border-emerald-600 text-white'
                   : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
-              }`}
+                }`}
               title="Copy prompt"
             >
               {copied ? (

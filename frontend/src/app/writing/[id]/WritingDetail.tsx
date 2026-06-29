@@ -97,7 +97,7 @@ export default function WritingDetail({ id }: { id: number }) {
   }
 
   // Resolve description and corrections JSON columns based on language setting
-  const descriptionVal = exercise.fields.description || "Write exactly one paragraph on the topic.";
+  const descriptionVal = language === "vi" && exercise.fields.description_vn ? exercise.fields.description_vn : exercise.fields.description || "Write exactly one paragraph on the topic.";
 
   const correctionsVal = language === "vi" && exercise.fields.correctionsJson_vn
     ? exercise.fields.correctionsJson_vn
