@@ -109,7 +109,7 @@ export default function GrammarDetail({ id }: { id: number }) {
 
       await loadExerciseData();
     } catch (err) {
-      console.error("Failed to submit answers:", err);
+      //console.error("Failed to submit answers:", err);
     } finally {
       setSubmitting(false);
     }
@@ -293,7 +293,7 @@ export default function GrammarDetail({ id }: { id: number }) {
               {t("Back to list", "Trở lại danh sách")}
             </button>
             <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">{exercise.fields.topic}</h1>
-            <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed font-sans">{exercise.fields.description}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed font-sans">{language === "vi" ? exercise.fields.description_vn : exercise.fields.description}</p>
           </div>
 
           {!isPendingUser && (
@@ -336,7 +336,7 @@ export default function GrammarDetail({ id }: { id: number }) {
                   </div>
 
                   <p className="text-base font-extrabold text-gray-900 dark:text-gray-100 leading-relaxed font-sans mb-3">
-                    {q.question}
+                    {language === "vi" ? q.question_vn : q.question}
                   </p>
 
                   {renderQuestionInput()}

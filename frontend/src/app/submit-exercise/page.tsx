@@ -10,7 +10,7 @@ const SAMPLES = {
   "topic": "Patientenaufnahme im Krankenhaus",
   "germanText": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrankungen und aktuelle Symptome genau zu dokumentieren.",
   "audioFileId": "example_audio_id",
-  "questionsJson": "[{\\"id\\":1,\\"type\\":\\"single_selection\\",\\"question\\":\\"Was ist bei der Aufnahme wichtig?\\",\\"options\\":[\\"Dokumentation der Symptome\\",\\"Nichts\\",\\"Kaffee trinken\\"],\\"correct_answer\\":\\"Dokumentation der Symptome\\",\\"difficulty\\":1,\\"explanation\\":\\"Documentation is key.\\",\\"explanation_vn\\":\\"Ghi chép bệnh án là quan trọng nhất.\\"}]"
+  "questionsJson": [{"id":1,"type":"single_selection","question":"Was ist bei der Aufnahme wichtig?","options":["Dokumentation der Symptome","Nichts","Kaffee trinken"],"correct_answer":"Dokumentation der Symptome","difficulty":1,"explanation":"Documentation is key.","explanation_vn":"Ghi chép bệnh án là quan trọng nhất."}]
 }`,
   writing: `{
   "profession": "nurse",
@@ -30,7 +30,7 @@ const SAMPLES = {
   "level": "B1",
   "topic": "Präpositionen mit Dativ in der Pflege",
   "description": "Practice prepositions that take the dative case (mit, nach, bei, seit, von, zu) in a medical context.",
-  "questionsJson": "[{\\"id\\":1,\\"type\\":\\"fill_in_gap\\",\\"question\\":\\"Ich gehe zu___ Arzt (dem Arzt).\\",\\"options\\":[\\"m\\",\\"r\\",\\"n\\"],\\"correct_answer\\":\\"m\\",\\"difficulty\\":1,\\"explanation\\":\\"zu + dem = zum\\",\\"explanation_vn\\":\\"zu đi với Dativ, der Arzt -> dem Arzt, viết tắt là zum.\\"}]"
+  "questionsJson": [{"id":1,"type":"fill_in_gap","question":"Ich gehe zu___ Arzt (dem Arzt).","options":["m","r","n"],"correct_answer":"m","difficulty":1,"explanation":"zu + dem = zum","explanation_vn":"zu đi với Dativ, der Arzt -> dem Arzt, viết tắt là zum."}]
 }`
 };
 
@@ -141,11 +141,11 @@ Provide the output as a single, valid JSON object matching this schema:
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "germanText": "[A German reading passage of 250-350 words based on the researched news, structured in at least 2 paragraphs. You may use markdown (such as bolding key terms, headers, or bullet lists) inside this string to structure the text and make it easier to read when required]",
   "audioFileId": "",
-  "questionsJson": "[A JSON array containing exactly 10 comprehension and grammar questions of increasing difficulty (1 to 10) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]"
+  "questionsJson": [A JSON array containing exactly 10 comprehension and grammar questions of increasing difficulty (1 to 10) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]
 }
 
 CRITICAL: 
-1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. \\"id\\": 1).
+1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. "id": 1).
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 3. The "topic" field value MUST be written in German.
 4. The "germanText" must be at least 2 paragraphs long, can use markdown formatting where appropriate, and MUST be strictly based on current news facts related to this topic.`;
@@ -194,13 +194,15 @@ Provide the output as a single, valid JSON object matching this schema:
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "description": "[Short grammar guidelines/explanation in English]",
   "description_vn": "[Short grammar guidelines/explanation in Vietnamese]",
-  "questionsJson": "[A JSON array containing exactly 15 grammar questions of increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]"
+  "questionsJson": [A JSON array containing exactly 15 grammar questions of increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "question_vn": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]
 }
 
 CRITICAL: 
-1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. \\"id\\": 1).
+1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. "id": 1).
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
-3. The "topic" field value MUST be written in German.`;
+3. The "topic" field value MUST be written in German.
+4. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.
+5. question_vn is the Vietnamese version of question, but only the part that is in English. For example: is this sentence grammatically correct? <German question> becomes Câu này có đúng ngữ pháp không? <German question>`;
   };
 
   const handleCopyPrompt = () => {

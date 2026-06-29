@@ -84,6 +84,7 @@ export interface ReadingPracticeFields {
 export interface GrammarPracticeFields {
   topic: string;
   description: string;
+  description_vn: string;
   questionsJson: string;
   profession?: string;
   level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
