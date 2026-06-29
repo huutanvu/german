@@ -2,7 +2,7 @@
 
 import type { ProfessionReference } from './types';
 
-export type { ProfessionReference };
+
 
 const FLOTIQ_URL = process.env.NEXT_PUBLIC_FLOTIQ_URL ?? 'https://api.flotiq.com';
 const FLOTIQ_RO_KEY = process.env.NEXT_PUBLIC_FLOTIQ_KEY ?? '';

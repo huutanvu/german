@@ -133,6 +133,8 @@ export interface UserProfile {
   displayName: string;
   profession: string;
   targetLevel: string;
+  preferredLanguage?: string;
+  preferred_language?: string;
 }
 
 // ─── Publit.io Types ────────────────────────────────────────────

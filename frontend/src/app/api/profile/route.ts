@@ -48,6 +48,7 @@ export async function GET() {
       display_name: '',
       profession: 'software_engineer',
       target_level: 'B1',
+      preferred_language: 'en',
     });
   }
 
@@ -60,7 +61,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { displayName?: string; profession?: string; targetLevel?: string };
+  let body: { displayName?: string; profession?: string; targetLevel?: string; preferredLanguage?: string };
   try {
     body = await request.json();
   } catch {
@@ -72,6 +73,7 @@ export async function PUT(request: Request) {
     ...(body.displayName !== undefined && { display_name: body.displayName }),
     ...(body.profession !== undefined && { profession: body.profession }),
     ...(body.targetLevel !== undefined && { target_level: body.targetLevel }),
+    ...(body.preferredLanguage !== undefined && { preferred_language: body.preferredLanguage }),
   };
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {

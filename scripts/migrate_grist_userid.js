@@ -90,6 +90,41 @@ async function patchRecords(table, records) {
   }
 }
 
+async function ensureUserIdColumn(table) {
+  const res = await fetch(`${BASE}/${table}/columns`, { headers: HEADERS });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GET columns for ${table} failed (${res.status}): ${text}`);
+  }
+  const data = await res.json();
+  const columns = data.columns ?? [];
+  const hasUserId = columns.some((c) => c.id === "userId");
+
+  if (!hasUserId) {
+    console.log(`Adding userId column to table ${table}...`);
+    const addRes = await fetch(`${BASE}/${table}/columns`, {
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify({
+        columns: [
+          {
+            id: "userId",
+            fields: {
+              label: "userId",
+              type: "Text",
+            },
+          },
+        ],
+      }),
+    });
+    if (!addRes.ok) {
+      const text = await addRes.text();
+      throw new Error(`Failed to add userId column to ${table} (${addRes.status}): ${text}`);
+    }
+    console.log(`  -> Column userId created successfully in ${table}.`);
+  }
+}
+
 async function migrateTable(table) {
   const records = await fetchRecords(table);
   const missing = records.filter((r) => !r.fields?.userId);
@@ -105,6 +140,7 @@ async function main() {
   console.log(`Migrating userId="${userId}" into Grist doc "${GRIST_DOC}"...\n`);
   for (const table of TABLES) {
     try {
+      await ensureUserIdColumn(table);
       await migrateTable(table);
     } catch (err) {
       console.error(`  ERROR on table ${table}:`, err.message);
@@ -114,3 +150,4 @@ async function main() {
 }
 
 main();
+

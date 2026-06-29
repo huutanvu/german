@@ -38,50 +38,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'var(--background)',
-        color: 'var(--foreground)',
-        fontFamily: 'inherit',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '380px',
-          padding: '2.5rem 2rem',
-          borderRadius: '12px',
-          border: '1px solid var(--border)',
-          backgroundColor: 'var(--card)',
-        }}
-      >
-        <h1
-          style={{
-            margin: '0 0 0.25rem',
-            fontSize: '1.5rem',
-            fontWeight: 600,
-          }}
-        >
-          German Learning Vault
-        </h1>
-        <p
-          style={{
-            margin: '0 0 2rem',
-            fontSize: '0.875rem',
-            opacity: 0.6,
-          }}
-        >
-          Sign in to continue
-        </p>
+    <main className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-slate-950 px-4 sm:px-6">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-xl rounded-2xl p-8 sm:p-10 transition-all">
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+            German Learning Vault
+          </h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+            Sign in to access your learning dashboard
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-            <label htmlFor="email" style={{ fontSize: '0.8125rem', fontWeight: 500, opacity: 0.8 }}>
-              Email
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+              Email Address
             </label>
             <input
               id="email"
@@ -89,22 +60,13 @@ export default function LoginPage() {
               type="email"
               required
               autoComplete="email"
-              style={{
-                padding: '0.625rem 0.75rem',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--background)',
-                color: 'var(--foreground)',
-                fontSize: '0.9375rem',
-                outline: 'none',
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
+              placeholder="name@example.com"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm"
             />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-            <label htmlFor="password" style={{ fontSize: '0.8125rem', fontWeight: 500, opacity: 0.8 }}>
+          <div className="space-y-2">
+            <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
               Password
             </label>
             <input
@@ -113,54 +75,23 @@ export default function LoginPage() {
               type="password"
               required
               autoComplete="current-password"
-              style={{
-                padding: '0.625rem 0.75rem',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--background)',
-                color: 'var(--foreground)',
-                fontSize: '0.9375rem',
-                outline: 'none',
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
+              placeholder="••••••••"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm"
             />
           </div>
 
           {error && (
-            <p
-              style={{
-                margin: 0,
-                padding: '0.625rem 0.75rem',
-                borderRadius: '8px',
-                backgroundColor: 'color-mix(in srgb, red 12%, transparent)',
-                border: '1px solid color-mix(in srgb, red 30%, transparent)',
-                color: 'var(--destructive, #f87171)',
-                fontSize: '0.8125rem',
-              }}
-            >
+            <div className="p-3.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs font-medium leading-relaxed">
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.675rem 1rem',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: 'var(--primary)',
-              color: 'var(--primary-foreground)',
-              fontSize: '0.9375rem',
-              fontWeight: 500,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              transition: 'opacity 0.15s',
-            }}
+            className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm shadow-md shadow-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
       </div>

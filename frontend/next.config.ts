@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  async redirects() {
+    return [
+      {
+        source: "/settings",
+        destination: "/profile",
+        permanent: true,
+      },
+    ];
+  },
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

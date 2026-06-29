@@ -115,11 +115,11 @@ export function Navbar() {
                 {userMenuOpen && (
                   <div className="absolute right-0 top-9 z-50 w-44 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1">
                     <Link
-                      href="/settings"
+                      href="/profile"
                       onClick={() => setUserMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                      Settings
+                      {t("Profile", "Hồ sơ")}
                     </Link>
                     <button
                       onClick={() => {

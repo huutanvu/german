@@ -104,11 +104,28 @@ async function gristWrite<T>(
   return res.json() as Promise<T>;
 }
 
+import { cookies } from "next/headers";
+import { decodeJwtPayload } from "./supabase";
+
+async function getUserIdFromCookie(): Promise<string | undefined> {
+  try {
+    const store = await cookies();
+    const token = store.get('sb-access-token')?.value;
+    if (!token) return undefined;
+    const payload = decodeJwtPayload(token);
+    if (!payload || typeof payload.sub !== 'string') return undefined;
+    return payload.sub;
+  } catch {
+    return undefined;
+  }
+}
+
 // ─── Learning Context ───────────────────────────────────────────
 
 export async function getLearningContext(userId?: string): Promise<LearningContext | null> {
-  if (userId) {
-    const query = `?filter=${encodeURIComponent(JSON.stringify({ userId: [userId] }))}`;
+  const resolvedUserId = userId || (await getUserIdFromCookie());
+  if (resolvedUserId) {
+    const query = `?filter=${encodeURIComponent(JSON.stringify({ userId: [resolvedUserId] }))}`;
     const res = await gristGet<GristResponse<LearningContextFields>>(`/tables/LearningContext/records${query}`);
     return res.records.length > 0 ? res.records[0] : null;
   }
@@ -137,10 +154,11 @@ export async function listVocabulary(
   type?: string,
   userId?: string
 ): Promise<GristResponse<VocabularyFields>> {
+  const resolvedUserId = userId || (await getUserIdFromCookie());
   const filters: Record<string, string[]> = {};
   if (level) filters.level = [level];
   if (type) filters.type = [type];
-  if (userId) filters.userId = [userId];
+  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -159,8 +177,9 @@ export async function getVocabularyByWord(word: string | string[]): Promise<Voca
 export async function createVocabulary(
   fields: Partial<VocabularyFields>
 ): Promise<{ records: { id: number }[] }> {
+  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   return gristWrite("POST", "/tables/Vocabulary/records", {
-    records: [{ fields: { ...fields, correctCount: 0, updatedAt: new Date().toISOString() } }],
+    records: [{ fields: { ...fields, correctCount: 0, updatedAt: new Date().toISOString(), ...(resolvedUserId ? { userId: resolvedUserId } : {}) } }],
   });
 }
 
@@ -179,9 +198,10 @@ export async function listReviews(
   status?: string,
   userId?: string
 ): Promise<GristResponse<VocabularyReviewFields>> {
+  const resolvedUserId = userId || (await getUserIdFromCookie());
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
-  if (userId) filters.userId = [userId];
+  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -195,11 +215,12 @@ export async function upsertReview(
   userSentence: string,
   status: 'pending_correction' | 'corrected' | 'failed' = 'pending_correction'
 ): Promise<void> {
+  const resolvedUserId = await getUserIdFromCookie();
   await gristWrite("PUT", "/tables/VocabularyReviews/records", {
     records: [
       {
-        require: { vocabId, status: 'pending_correction' },
-        fields: { userSentence, status, reviewedAt: new Date().toISOString() },
+        require: { vocabId, status: 'pending_correction', ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        fields: { userSentence, status, reviewedAt: new Date().toISOString(), ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
       },
     ],
   });
@@ -220,9 +241,10 @@ export async function listWritingPractices(
   status?: string,
   userId?: string
 ): Promise<GristResponse<WritingPracticeFields>> {
+  const resolvedUserId = userId || (await getUserIdFromCookie());
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
-  if (userId) filters.userId = [userId];
+  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -235,11 +257,12 @@ export async function upsertWritingPractice(
   topic: string,
   fields: Partial<WritingPracticeFields>
 ): Promise<void> {
+  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   await gristWrite("PUT", "/tables/WritingPractice/records", {
     records: [
       {
-        require: { topic },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0] },
+        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
       },
     ],
   });
@@ -251,9 +274,10 @@ export async function listReadingPractices(
   status?: string,
   userId?: string
 ): Promise<GristResponse<ReadingPracticeFields>> {
+  const resolvedUserId = userId || (await getUserIdFromCookie());
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
-  if (userId) filters.userId = [userId];
+  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -266,11 +290,12 @@ export async function upsertReadingPractice(
   topic: string,
   fields: Partial<ReadingPracticeFields>
 ): Promise<void> {
+  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   await gristWrite("PUT", "/tables/ReadingPractice/records", {
     records: [
       {
-        require: { topic },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0] },
+        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
       },
     ],
   });
@@ -282,9 +307,10 @@ export async function listGrammarPractices(
   status?: string,
   userId?: string
 ): Promise<GristResponse<GrammarPracticeFields>> {
+  const resolvedUserId = userId || (await getUserIdFromCookie());
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
-  if (userId) filters.userId = [userId];
+  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -297,11 +323,12 @@ export async function upsertGrammarPractice(
   topic: string,
   fields: Partial<GrammarPracticeFields>
 ): Promise<void> {
+  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   await gristWrite("PUT", "/tables/GrammarPractice/records", {
     records: [
       {
-        require: { topic },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0] },
+        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
       },
     ],
   });
@@ -313,9 +340,10 @@ export async function listSpeakingPractices(
   status?: string,
   userId?: string
 ): Promise<GristResponse<SpeakingPracticeFields>> {
+  const resolvedUserId = userId || (await getUserIdFromCookie());
   const filters: Record<string, string[]> = {};
   if (status) filters.status = [status];
-  if (userId) filters.userId = [userId];
+  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -328,11 +356,12 @@ export async function upsertSpeakingPractice(
   topic: string,
   fields: Partial<SpeakingPracticeFields>
 ): Promise<void> {
+  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   await gristWrite("PUT", "/tables/SpeakingPractice/records", {
     records: [
       {
-        require: { topic },
-        fields: { ...fields, date: new Date().toISOString().split("T")[0] },
+        require: { topic, ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
+        fields: { ...fields, date: new Date().toISOString().split("T")[0], ...(resolvedUserId ? { userId: resolvedUserId } : {}) },
       },
     ],
   });
@@ -342,6 +371,7 @@ export async function createSpeakingPractice(
   targetText: string,
   fields: Partial<SpeakingPracticeFields>
 ): Promise<SpeakingPractice> {
+  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   const res = await gristWrite<{ records: any[] }>("POST", "/tables/SpeakingPractice/records", {
     records: [
       {
@@ -350,6 +380,7 @@ export async function createSpeakingPractice(
           targetText,
           ...fields,
           date: new Date().toISOString().split("T")[0],
+          ...(resolvedUserId ? { userId: resolvedUserId } : {}),
         },
       },
     ],
@@ -370,25 +401,37 @@ export async function updateSpeakingPractice(
   });
 }
 export async function getReadingPractice(id: number): Promise<ReadingPractice | null> {
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
+  const resolvedUserId = await getUserIdFromCookie();
+  const filters: Record<string, any[]> = { id: [id] };
+  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
   const res = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }
 
 export async function getGrammarPractice(id: number): Promise<GrammarPractice | null> {
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
+  const resolvedUserId = await getUserIdFromCookie();
+  const filters: Record<string, any[]> = { id: [id] };
+  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
   const res = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }
 
 export async function getWritingPractice(id: number): Promise<WritingPractice | null> {
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
+  const resolvedUserId = await getUserIdFromCookie();
+  const filters: Record<string, any[]> = { id: [id] };
+  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
   const res = await gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }
 
 export async function getSpeakingPractice(id: number): Promise<SpeakingPractice | null> {
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ id: [id] }))}`;
+  const resolvedUserId = await getUserIdFromCookie();
+  const filters: Record<string, any[]> = { id: [id] };
+  if (resolvedUserId) filters.userId = [resolvedUserId];
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
   const res = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
   return res.records.length > 0 ? res.records[0] : null;
 }
@@ -422,22 +465,32 @@ export async function lookupAndAddWord(rawWord: string, contextSentence: string,
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
 
+  const resolvedUserId = userId || (await getUserIdFromCookie());
+
   const prompt = `You are a German language teacher fluent in both English and Vietnamese.
 Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
 Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs.
 
-Format guidelines:
-- For "dailyUse", provide a natural German example sentence showing daily context use of the resolved word, followed by its English translation in brackets. Format: "German sentence [English translation]"
-- For "dailyUse_vn", provide the EXACT same German example sentence as dailyUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
-- For "professionalUse", provide a German example sentence showing professional software engineering/agile context use, followed by its English translation in brackets. Format: "German sentence [English translation]"
-- For "professionalUse_vn", provide the EXACT same German example sentence as professionalUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
+You must generate vocabulary context examples, translation, tips, and cautions for ALL of the following 7 professions:
+1. software_engineer
+2. healthcare_professional
+3. nurse
+4. teacher
+5. legal_professional
+6. finance_professional
+7. general
 
-CRITICAL: The sentence before the brackets MUST be the original German sentence in all four columns. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
+For each profession:
+- dailyUse: German sentence [English translation]
+- dailyUse_vn: Same German sentence [Vietnamese translation]
+- professionalUse: German sentence [English translation] tailored to the profession
+- professionalUse_vn: Same German sentence [Vietnamese translation] tailored to the profession
+- tips: Grammatical cases, prepositions, or tips in English
+- tips_vn: Grammatical cases, prepositions, or tips explained in Vietnamese
+- caution: Common pitfalls or false friends in English
+- caution_vn: Common pitfalls or false friends explained in Vietnamese
 
-Example:
-If German sentence is "Ich gehe heute einkaufen.", then:
-- dailyUse: "Ich gehe heute einkaufen. [I am going shopping today.]"
-- dailyUse_vn: "Ich gehe heute einkaufen. [Hôm nay tôi đi mua sắm.]"
+CRITICAL: The sentence before the brackets [...] MUST be the original German sentence. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
 
 Provide the response as a JSON object matching this schema:
 {
@@ -446,15 +499,20 @@ Provide the response as a JSON object matching this schema:
   "meanings_vn": "Vietnamese translations/meanings separated by commas",
   "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
   "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc. in English",
-  "grammar_vn": "Grammatical notes (articles, plurals, auxiliary verbs, etc.) explained in Vietnamese",
-  "dailyUse": "German sentence [English translation]",
-  "dailyUse_vn": "German sentence [Vietnamese translation]",
-  "professionalUse": "German sentence [English translation]",
-  "professionalUse_vn": "German sentence [Vietnamese translation]",
-  "tips": "Grammatical cases, prepositions, or tips in English",
-  "tips_vn": "Grammatical cases, prepositions, or tips explained in Vietnamese",
-  "caution": "Common pitfalls or false friends in English",
-  "caution_vn": "Common pitfalls or false friends explained in Vietnamese"
+  "grammar_vn": "Grammatical notes explained in Vietnamese",
+  "usages": [
+    {
+      "profession": "one of the 7 professions above",
+      "dailyUse": "German sentence [English translation]",
+      "dailyUse_vn": "German sentence [Vietnamese translation]",
+      "professionalUse": "German sentence [English translation]",
+      "professionalUse_vn": "German sentence [Vietnamese translation]",
+      "tips": "Tips in English",
+      "tips_vn": "Tips in Vietnamese",
+      "caution": "Caution in English",
+      "caution_vn": "Caution in Vietnamese"
+    }
+  ]
 }`;
 
   const replyText = await callGemini(apiKey, {
@@ -464,6 +522,9 @@ Provide the response as a JSON object matching this schema:
 
   const parsed = JSON.parse(replyText);
 
+  // Extract software_engineer or general to use as baseline
+  const baseline = parsed.usages.find((u: any) => u.profession === "software_engineer") || parsed.usages[0];
+
   const gristRes = await createVocabulary({
     word: parsed.word,
     meanings: parsed.meanings,
@@ -472,20 +533,38 @@ Provide the response as a JSON object matching this schema:
     type: "new",
     grammar: parsed.grammar,
     grammar_vn: parsed.grammar_vn,
-    dailyUse: parsed.dailyUse,
-    dailyUse_vn: parsed.dailyUse_vn,
-    professionalUse: parsed.professionalUse,
-    professionalUse_vn: parsed.professionalUse_vn,
-    tips: parsed.tips,
-    tips_vn: parsed.tips_vn,
-    caution: parsed.caution,
-    caution_vn: parsed.caution_vn,
+    dailyUse: baseline.dailyUse,
+    dailyUse_vn: baseline.dailyUse_vn,
+    professionalUse: baseline.professionalUse,
+    professionalUse_vn: baseline.professionalUse_vn,
+    tips: baseline.tips,
+    tips_vn: baseline.tips_vn,
+    caution: baseline.caution,
+    caution_vn: baseline.caution_vn,
     isProcessed: true,
-    ...(userId ? { userId } : {}),
+    ...(resolvedUserId ? { userId: resolvedUserId } : {}),
   });
 
   if (gristRes.records && gristRes.records.length > 0) {
     const newId = gristRes.records[0].id;
+
+    // Create usages for all professions in bulk
+    const usageRecords = parsed.usages.map((u: any) => ({
+      vocabId: newId,
+      profession: u.profession,
+      dailyUse: u.dailyUse,
+      dailyUse_vn: u.dailyUse_vn,
+      professionalUse: u.professionalUse,
+      professionalUse_vn: u.professionalUse_vn,
+      tips: u.tips,
+      tips_vn: u.tips_vn,
+      caution: u.caution,
+      caution_vn: u.caution_vn,
+      ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+    }));
+
+    await createVocabularyUsages(usageRecords);
+
     const itemsRes = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records?filter=${encodeURIComponent(JSON.stringify({ id: [newId] }))}`);
     return itemsRes.records[0] || null;
   }
@@ -511,6 +590,16 @@ export async function createVocabularyUsage(
   });
 }
 
+export async function createVocabularyUsages(
+  records: Partial<VocabularyUsageFields>[]
+): Promise<{ records: { id: number }[] }> {
+  return gristWrite('POST', '/tables/VocabularyUsage/records', {
+    records: records.map(fields => ({
+      fields: { ...fields, createdAt: new Date().toISOString() }
+    })),
+  });
+}
+
 export async function getVocabularyUsageForUser(
   vocabId: number,
   profession: string
@@ -518,3 +607,4 @@ export async function getVocabularyUsageForUser(
   const res = await listVocabularyUsage(vocabId, profession);
   return res.records.length > 0 ? res.records[0] : null;
 }
+

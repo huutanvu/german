@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { useAuth } from "./auth-context";
+
 const STORAGE_KEY = "german-learning:language";
 
 export type Language = "en" | "vi";
@@ -27,6 +29,7 @@ const LanguageContext = createContext<LanguageContextValue>({
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>("en");
+  const { user } = useAuth();
 
   useEffect(() => {
     try {
@@ -36,6 +39,25 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       }
     } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/profile')
+        .then((res) => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then((profile) => {
+          if (profile && (profile.preferred_language === 'en' || profile.preferred_language === 'vi')) {
+            setLanguageState(profile.preferred_language as Language);
+            try {
+              localStorage.setItem(STORAGE_KEY, profile.preferred_language);
+            } catch {}
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);

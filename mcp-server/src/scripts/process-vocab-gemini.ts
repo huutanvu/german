@@ -67,18 +67,26 @@ async function askGemini(rawWord: string, contextSentence: string): Promise<any>
 Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
 Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs.
 
-Format guidelines:
-- For "dailyUse", provide a natural German example sentence showing daily context use of the resolved word, followed by its English translation in brackets. Format: "German sentence [English translation]"
-- For "dailyUse_vn", provide the EXACT same German example sentence as dailyUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
-- For "professionalUse", provide a German example sentence showing professional software engineering/agile context use, followed by its English translation in brackets. Format: "German sentence [English translation]"
-- For "professionalUse_vn", provide the EXACT same German example sentence as professionalUse, but followed by its Vietnamese translation in brackets. Format: "German sentence [Vietnamese translation]"
+You must generate vocabulary context examples, translation, tips, and cautions for ALL of the following 7 professions:
+1. software_engineer
+2. healthcare_professional
+3. nurse
+4. teacher
+5. legal_professional
+6. finance_professional
+7. general
 
-CRITICAL: The sentence before the brackets MUST be the original German sentence in all four columns. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
+For each profession:
+- dailyUse: German sentence [English translation]
+- dailyUse_vn: Same German sentence [Vietnamese translation]
+- professionalUse: German sentence [English translation] tailored to the profession
+- professionalUse_vn: Same German sentence [Vietnamese translation] tailored to the profession
+- tips: Grammatical cases, prepositions, or tips in English
+- tips_vn: Grammatical cases, prepositions, or tips explained in Vietnamese
+- caution: Common pitfalls or false friends in English
+- caution_vn: Common pitfalls or false friends explained in Vietnamese
 
-Example:
-If German sentence is "Ich gehe heute einkaufen.", then:
-- dailyUse: "Ich gehe heute einkaufen. [I am going shopping today.]"
-- dailyUse_vn: "Ich gehe heute einkaufen. [Hôm nay tôi đi mua sắm.]"
+CRITICAL: The sentence before the brackets [...] MUST be the original German sentence. Do NOT translate the German sentence itself to English or Vietnamese outside of the brackets. Only the translation inside the brackets [...] should be English or Vietnamese.
 
 Provide the response as a JSON object matching this schema:
 {
@@ -87,15 +95,20 @@ Provide the response as a JSON object matching this schema:
   "meanings_vn": "Vietnamese translations/meanings separated by commas",
   "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
   "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc. in English",
-  "grammar_vn": "Grammatical notes (articles, plurals, auxiliary verbs, etc.) explained in Vietnamese",
-  "dailyUse": "German sentence [English translation]",
-  "dailyUse_vn": "German sentence [Vietnamese translation]",
-  "professionalUse": "German sentence [English translation]",
-  "professionalUse_vn": "German sentence [Vietnamese translation]",
-  "tips": "Grammatical cases, prepositions, or tips in English",
-  "tips_vn": "Grammatical cases, prepositions, or tips explained in Vietnamese",
-  "caution": "Common pitfalls or false friends in English",
-  "caution_vn": "Common pitfalls or false friends explained in Vietnamese"
+  "grammar_vn": "Grammatical notes explained in Vietnamese",
+  "usages": [
+    {
+      "profession": "one of the 7 professions above",
+      "dailyUse": "German sentence [English translation]",
+      "dailyUse_vn": "German sentence [Vietnamese translation]",
+      "professionalUse": "German sentence [English translation]",
+      "professionalUse_vn": "German sentence [Vietnamese translation]",
+      "tips": "Tips in English",
+      "tips_vn": "Tips in Vietnamese",
+      "caution": "Caution in English",
+      "caution_vn": "Caution in Vietnamese"
+    }
+  ]
 }`;
 
   const models = [
@@ -164,6 +177,36 @@ async function updateGrist(id: number, fields: any) {
   }
 }
 
+async function insertVocabularyUsages(vocabId: number, usages: any[], userId?: string) {
+  const records = usages.map(u => ({
+    fields: {
+      vocabId,
+      profession: u.profession,
+      dailyUse: u.dailyUse,
+      dailyUse_vn: u.dailyUse_vn,
+      professionalUse: u.professionalUse,
+      professionalUse_vn: u.professionalUse_vn,
+      tips: u.tips,
+      tips_vn: u.tips_vn,
+      caution: u.caution,
+      caution_vn: u.caution_vn,
+      createdAt: new Date().toISOString(),
+      ...(userId ? { userId } : {})
+    }
+  }));
+
+  const res = await fetch(`${base}/tables/VocabularyUsage/records`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ records })
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`Warning: Failed to save vocabulary usages: ${res.status} ${text}`);
+  }
+}
+
 async function main() {
   console.log('Scanning Grist for unprocessed vocabulary words...');
   const records = await fetchUnprocessed();
@@ -178,7 +221,27 @@ async function main() {
       const result = await askGemini(rawWord, context);
       console.log(`Gemini resolved "${rawWord}" -> "${result.word}"`);
 
-      await updateGrist(record.id, result);
+      // Extract software_engineer or general to use as baseline
+      const baseline = result.usages.find((u: any) => u.profession === "software_engineer") || result.usages[0];
+      const updatePayload = {
+        word: result.word,
+        meanings: result.meanings,
+        meanings_vn: result.meanings_vn,
+        level: result.level || "B1",
+        grammar: result.grammar,
+        grammar_vn: result.grammar_vn,
+        dailyUse: baseline.dailyUse,
+        dailyUse_vn: baseline.dailyUse_vn,
+        professionalUse: baseline.professionalUse,
+        professionalUse_vn: baseline.professionalUse_vn,
+        tips: baseline.tips,
+        tips_vn: baseline.tips_vn,
+        caution: baseline.caution,
+        caution_vn: baseline.caution_vn,
+      };
+
+      await updateGrist(record.id, updatePayload);
+      await insertVocabularyUsages(record.id, result.usages, record.fields.userId);
       console.log(`Successfully processed and saved "${result.word}".`);
     } catch (err) {
       console.error(`Failed to process "${rawWord}":`, err);
