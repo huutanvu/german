@@ -232,6 +232,7 @@ export default function ReadingDetail({ id }: { id: number }) {
             content={exercise.fields.germanText}
             tokensJson={exercise.fields.tokensJson || ""}
             onWordLookup={handleWordLookup}
+            isLookupOpen={isLookupOpen}
           />
         </div>
 

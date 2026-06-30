@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { getVocabularyByWord, lookupAndAddWord } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
@@ -10,6 +10,7 @@ interface MarkdownDisplayProps {
   tokensJson: string; // Now strictly required
   onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void;
   className?: string;
+  isLookupOpen?: boolean;
 }
 
 export function MarkdownDisplay({
@@ -17,9 +18,16 @@ export function MarkdownDisplay({
   tokensJson,
   onWordLookup,
   className = "",
+  isLookupOpen,
 }: MarkdownDisplayProps) {
   const [hoveredTokenIndex, setHoveredTokenIndex] = useState<number | null>(null);
   const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isLookupOpen === false) {
+      setSelectedTokenIndex(null);
+    }
+  }, [isLookupOpen]);
 
   let annotatedText: any = null;
   if (tokensJson) {
@@ -54,6 +62,38 @@ export function MarkdownDisplay({
   );
 }
 
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  // Regex to match code blocks, bold, and italic text
+  // Match `code`, **bold**, or *italic*
+  const regex = /(`[^`\n]+`|\*\*[^*]+?\*\*|\*[^*]+?\*)/g;
+  const parts = text.split(regex);
+
+  return parts.map((part, idx) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={idx} className="bg-gray-100 dark:bg-slate-800 px-1 py-0.5 rounded text-xs font-mono font-semibold text-gray-900 dark:text-slate-100">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={idx} className="font-bold text-gray-950 dark:text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <em key={idx} className="italic text-gray-900 dark:text-slate-100">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    return part;
+  });
+}
+
 export function PlainMarkdown({
   content,
   className = "",
@@ -82,7 +122,7 @@ export function PlainMarkdown({
           const Tag = `h${Math.min(depth + 1, 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
           return (
             <Tag key={blockIdx} className="font-bold text-gray-900 dark:text-gray-100 mt-4 mb-2">
-              {text}
+              {renderInlineMarkdown(text)}
             </Tag>
           );
         }
@@ -93,7 +133,7 @@ export function PlainMarkdown({
             <ul key={blockIdx} className="list-disc pl-5 space-y-1 my-2">
               {items.map((item, itemIdx) => (
                 <li key={itemIdx} className="text-sm text-gray-800 dark:text-gray-200">
-                  {item}
+                  {renderInlineMarkdown(item)}
                 </li>
               ))}
             </ul>
@@ -102,7 +142,7 @@ export function PlainMarkdown({
 
         return (
           <p key={blockIdx} className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-sans">
-            {trimmed}
+            {renderInlineMarkdown(trimmed)}
           </p>
         );
       })}
@@ -326,7 +366,7 @@ function TokenWordSpan({
           onMouseEnter={() => onHoverToken(token.index)}
           onMouseLeave={() => onHoverToken(null)}
           className={[
-            "cursor-pointer rounded px-0.5 transition-colors duration-150 border-b border-dotted border-gray-400 dark:border-slate-500",
+            "cursor-pointer rounded px-0.5 transition-colors duration-150",
             token.bold ? "font-bold text-blue-600 dark:text-blue-400" : "",
             token.italic ? "italic" : "",
             isHighlighted

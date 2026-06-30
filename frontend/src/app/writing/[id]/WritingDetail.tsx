@@ -185,6 +185,7 @@ export default function WritingDetail({ id }: { id: number }) {
                       content={exercise.fields.correctedParagraph}
                       tokensJson={exercise.fields.correctedTokensJson || ""}
                       onWordLookup={handleWordLookup}
+                      isLookupOpen={isLookupOpen}
                     />
                   </div>
                 </div>

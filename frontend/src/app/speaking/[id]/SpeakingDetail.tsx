@@ -274,6 +274,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
             content={exercise.fields.targetText}
             tokensJson={exercise.fields.targetTokensJson || ""}
             onWordLookup={handleWordLookup}
+            isLookupOpen={isLookupOpen}
           />
         </div>
 

@@ -61,16 +61,102 @@ async function fetchUnprocessed() {
   return data.records;
 }
 
+function findMatchingBraceIndex(str: string, startIdx: number): number {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = startIdx; i < str.length; i++) {
+    const char = str[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          return i;
+        }
+      }
+    }
+  }
+
+  return -1;
+}
+
+function findMatchingBracketIndex(str: string, startIdx: number): number {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = startIdx; i < str.length; i++) {
+    const char = str[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '[') {
+        depth++;
+      } else if (char === ']') {
+        depth--;
+        if (depth === 0) {
+          return i;
+        }
+      }
+    }
+  }
+
+  return -1;
+}
+
 function cleanJsonString(str: string): string {
   let cleaned = str.trim();
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.slice(3);
+  
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let startIdx = -1;
+  let endIdx = -1;
+  
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    startIdx = firstBrace;
+    endIdx = findMatchingBraceIndex(cleaned, startIdx);
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+    endIdx = findMatchingBracketIndex(cleaned, startIdx);
   }
-  if (cleaned.endsWith("```")) {
-    cleaned = cleaned.slice(0, -3);
+  
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    cleaned = cleaned.substring(startIdx, endIdx + 1);
   }
+  
   cleaned = cleaned.trim();
   // Remove trailing commas in arrays/objects
   cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');

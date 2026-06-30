@@ -72,6 +72,82 @@ async function callGemini(
   throw lastError ?? new Error("All Gemini models failed");
 }
 
+function findMatchingBraceIndex(str: string, startIdx: number): number {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = startIdx; i < str.length; i++) {
+    const char = str[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          return i;
+        }
+      }
+    }
+  }
+
+  return -1;
+}
+
+function findMatchingBracketIndex(str: string, startIdx: number): number {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = startIdx; i < str.length; i++) {
+    const char = str[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '[') {
+        depth++;
+      } else if (char === ']') {
+        depth--;
+        if (depth === 0) {
+          return i;
+        }
+      }
+    }
+  }
+
+  return -1;
+}
+
 function cleanJsonString(str: string): string {
   let cleaned = str.trim();
   
@@ -82,10 +158,10 @@ function cleanJsonString(str: string): string {
   
   if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
     startIdx = firstBrace;
-    endIdx = cleaned.lastIndexOf('}');
+    endIdx = findMatchingBraceIndex(cleaned, startIdx);
   } else if (firstBracket !== -1) {
     startIdx = firstBracket;
-    endIdx = cleaned.lastIndexOf(']');
+    endIdx = findMatchingBracketIndex(cleaned, startIdx);
   }
   
   if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
