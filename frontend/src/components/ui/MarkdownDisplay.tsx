@@ -112,6 +112,10 @@ export function PlainMarkdown({
 
 // ─── Token Helper Functions ───
 
+function isPurePunctuation(str: string): boolean {
+  return !/[a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF]/.test(str);
+}
+
 function buildTokenSegments(annotatedText: { text: string; tokens: any[] }) {
   const text = annotatedText.text;
   const tokens = annotatedText.tokens;
@@ -214,7 +218,7 @@ function renderSegments(
       return <span key={idx}>{segmentText}</span>;
     }
 
-    if (token.type === "punctuation") {
+    if (token.type === "punctuation" || isPurePunctuation(segmentText)) {
       return <span key={idx}>{segmentText}</span>;
     }
 
@@ -262,7 +266,12 @@ function TokenWordSpan({
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "resolving" | "processing">("idle");
 
-  const isInteractive = token && (token.type !== "space" && token.type !== "punctuation" && token.type !== "name");
+  const isInteractive = token && (
+    token.type !== "space" &&
+    token.type !== "punctuation" &&
+    token.type !== "name" &&
+    !isPurePunctuation(text)
+  );
 
   if (!isInteractive) {
     return <span>{text}</span>;

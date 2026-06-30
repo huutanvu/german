@@ -1008,9 +1008,6 @@ Provide the response as a JSON object matching this schema:
 
   const parsed = safeJsonParse(replyText);
 
-  // Find the software_engineer usage to populate the default table fields
-  const seUsage = (parsed.usages || []).find((u: any) => u.profession === 'software_engineer') || (parsed.usages || [])[0] || {};
-
   const gristRes = await createVocabulary({
     word: parsed.word,
     meanings: parsed.meanings,
@@ -1019,14 +1016,6 @@ Provide the response as a JSON object matching this schema:
     type: "new",
     grammar: parsed.grammar,
     grammar_vn: parsed.grammar_vn,
-    dailyUse: seUsage.dailyUse || "",
-    dailyUse_vn: seUsage.dailyUse_vn || "",
-    professionalUse: seUsage.professionalUse || "",
-    professionalUse_vn: seUsage.professionalUse_vn || "",
-    tips: seUsage.tips || "",
-    tips_vn: seUsage.tips_vn || "",
-    caution: seUsage.caution || "",
-    caution_vn: seUsage.caution_vn || "",
     isProcessed: true,
     ...(resolvedUserId ? { userId: resolvedUserId } : {}),
   });

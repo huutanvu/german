@@ -47,41 +47,16 @@ export function registerVocabularyTools(server: McpServer) {
       type: z.enum(['new', 'revised', 'permanent', 'complicated']).default('new'),
       grammar: z.string().describe('Article, plural form (nouns), aux + past participle (verbs), etc.'),
       grammar_vn: z.string().optional().describe('Grammatical notes in Vietnamese'),
-      dailyUse: z.string().describe('Example sentence in daily life'),
-      dailyUse_vn: z.string().optional().describe('Daily example sentence in Vietnamese'),
-      professionalUse: z.string().describe('Example sentence in professional environment'),
-      professionalUse_vn: z.string().optional().describe('Professional example sentence in Vietnamese'),
-      tips: z.string().describe('Grammatical cases, prepositions, tips'),
-      tips_vn: z.string().optional().describe('Tips in Vietnamese'),
-      caution: z.string().describe('Pitfalls, false friends, common errors'),
-      caution_vn: z.string().optional().describe('Cautions in Vietnamese'),
-      dailyUseTokensJson: z.any().optional(),
-      dailyUseTokensJson_vn: z.any().optional(),
-      professionalUseTokensJson: z.any().optional(),
-      professionalUseTokensJson_vn: z.any().optional(),
       context: z.string().optional().describe('Sentence context where this word was captured'),
       isProcessed: z.boolean().optional().describe('True if this word is fully filled out, false if waiting in queue'),
       userId: z.string().optional().describe('User ID for multi-user support'),
     },
-    async ({ dailyUseTokensJson, dailyUseTokensJson_vn, professionalUseTokensJson, professionalUseTokensJson_vn, ...fields }) => {
-      const compDaily = compileTokenInput(dailyUseTokensJson);
-      const compDailyVn = compileTokenInput(dailyUseTokensJson_vn);
-      const compProf = compileTokenInput(professionalUseTokensJson);
-      const compProfVn = compileTokenInput(professionalUseTokensJson_vn);
-
+    async (fields) => {
       const result = await gristPost('/tables/Vocabulary/records', {
         records: [
           {
             fields: {
               ...fields,
-              dailyUse: compDaily && compDaily.text ? compDaily.text : fields.dailyUse,
-              dailyUse_vn: compDailyVn && compDailyVn.text ? compDailyVn.text : fields.dailyUse_vn,
-              professionalUse: compProf && compProf.text ? compProf.text : fields.professionalUse,
-              professionalUse_vn: compProfVn && compProfVn.text ? compProfVn.text : fields.professionalUse_vn,
-              dailyUseTokensJson: compDaily ? (typeof compDaily === 'string' ? compDaily : JSON.stringify(compDaily)) : undefined,
-              dailyUseTokensJson_vn: compDailyVn ? (typeof compDailyVn === 'string' ? compDailyVn : JSON.stringify(compDailyVn)) : undefined,
-              professionalUseTokensJson: compProf ? (typeof compProf === 'string' ? compProf : JSON.stringify(compProf)) : undefined,
-              professionalUseTokensJson_vn: compProfVn ? (typeof compProfVn === 'string' ? compProfVn : JSON.stringify(compProfVn)) : undefined,
               isProcessed: fields.isProcessed ?? (!!fields.meanings),
               correctCount: 0,
               updatedAt: new Date().toISOString(),
@@ -111,37 +86,12 @@ export function registerVocabularyTools(server: McpServer) {
       meanings_vn: z.string().optional(),
       grammar: z.string().optional(),
       grammar_vn: z.string().optional(),
-      dailyUse: z.string().optional(),
-      dailyUse_vn: z.string().optional(),
-      professionalUse: z.string().optional(),
-      professionalUse_vn: z.string().optional(),
-      tips: z.string().optional(),
-      tips_vn: z.string().optional(),
-      caution: z.string().optional(),
-      caution_vn: z.string().optional(),
-      dailyUseTokensJson: z.any().optional(),
-      dailyUseTokensJson_vn: z.any().optional(),
-      professionalUseTokensJson: z.any().optional(),
-      professionalUseTokensJson_vn: z.any().optional(),
       context: z.string().optional(),
       isProcessed: z.boolean().optional(),
     },
-    async ({ id, dailyUseTokensJson, dailyUseTokensJson_vn, professionalUseTokensJson, professionalUseTokensJson_vn, ...fields }) => {
-      const compDaily = compileTokenInput(dailyUseTokensJson);
-      const compDailyVn = compileTokenInput(dailyUseTokensJson_vn);
-      const compProf = compileTokenInput(professionalUseTokensJson);
-      const compProfVn = compileTokenInput(professionalUseTokensJson_vn);
-
+    async ({ id, ...fields }) => {
       const patchFields: Partial<VocabularyFields> = {
         ...fields,
-        dailyUse: compDaily && compDaily.text ? compDaily.text : fields.dailyUse,
-        dailyUse_vn: compDailyVn && compDailyVn.text ? compDailyVn.text : fields.dailyUse_vn,
-        professionalUse: compProf && compProf.text ? compProf.text : fields.professionalUse,
-        professionalUse_vn: compProfVn && compProfVn.text ? compProfVn.text : fields.professionalUse_vn,
-        dailyUseTokensJson: compDaily ? (typeof compDaily === 'string' ? compDaily : JSON.stringify(compDaily)) : undefined,
-        dailyUseTokensJson_vn: compDailyVn ? (typeof compDailyVn === 'string' ? compDailyVn : JSON.stringify(compDailyVn)) : undefined,
-        professionalUseTokensJson: compProf ? (typeof compProf === 'string' ? compProf : JSON.stringify(compProf)) : undefined,
-        professionalUseTokensJson_vn: compProfVn ? (typeof compProfVn === 'string' ? compProfVn : JSON.stringify(compProfVn)) : undefined,
         updatedAt: new Date().toISOString(),
       };
 
