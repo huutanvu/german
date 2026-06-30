@@ -124,6 +124,16 @@ export default function VocabularyPage() {
                 ? word.fields.professionalUse_vn
                 : word.fields.professionalUse;
 
+              const tipsVal = language === "vi" && word.fields.tips_vn
+                ? word.fields.tips_vn
+                : word.fields.tips;
+
+              const cautionVal = language === "vi" && word.fields.caution_vn
+                ? word.fields.caution_vn
+                : word.fields.caution;
+
+              const contextVal = word.fields.context;
+
               return (
                 <div key={word.id} className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
@@ -162,6 +172,9 @@ export default function VocabularyPage() {
                           <div className="text-[11px] text-gray-500 dark:text-slate-400 space-y-1.5 bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800">
                             <div><strong>{t("Daily Use", "Sử dụng hàng ngày")}</strong>: {dailyUseVal}</div>
                             <div><strong>{t("Professional Use", "Sử dụng công việc")}</strong>: {professionalUseVal}</div>
+                            {tipsVal && <div><strong>{t("Tips / Prepositions", "Mẹo học / Giới từ")}</strong>: {tipsVal}</div>}
+                            {cautionVal && <div><strong>{t("Caution", "Lưu ý")}</strong>: {cautionVal}</div>}
+                            {contextVal && <div><strong>{t("Context Captured", "Ngữ cảnh gốc")}</strong>: {contextVal}</div>}
                           </div>
                           <Popover.Arrow className="fill-white dark:fill-slate-900 stroke-gray-200 dark:stroke-slate-800" />
                         </Popover.Content>

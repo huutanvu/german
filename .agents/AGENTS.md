@@ -25,14 +25,10 @@ Holds the user's vocabulary list.
 - `correctCount` (Integer): Correct review count (mastery at 5)
 - `grammar` (Text): Article, plural, genitive (nouns), auxiliary verb (verbs), etc. in English
 - `grammar_vn` (Text): Grammatical notes in Vietnamese
-- `dailyUse` (Text): Daily example sentence
+- `dailyUse` (Text): Daily example sentence (for the general context default)
 - `dailyUse_vn` (Text): Same daily example sentence in Vietnamese
-- `dailyUseTokensJson` (Text): Token spans JSON for dailyUse German sentence
-- `dailyUseTokensJson_vn` (Text): Token spans JSON for dailyUse_vn Vietnamese sentence
-- `professionalUse` (Text): Professional example sentence (Software Engineering context)
+- `professionalUse` (Text): Professional example sentence (Software Engineering context default)
 - `professionalUse_vn` (Text): Same professional German example sentence in Vietnamese
-- `professionalUseTokensJson` (Text): Token spans JSON for professionalUse German sentence
-- `professionalUseTokensJson_vn` (Text): Token spans JSON for professionalUse_vn Vietnamese sentence
 - `tips` (Text): Associated prepositions/cases in English
 - `tips_vn` (Text): Associated prepositions/cases in Vietnamese
 - `caution` (Text): Common pitfalls or false friends in English
@@ -152,11 +148,6 @@ When executing a correction or generation task:
      - Read the raw clicked `word` and the context.
      - Analyze context sentence to resolve the correct dictionary base form.
      - Update Grist fields with meanings, grammar notes, daily and professional example sentences, tips, and cautions in both English and Vietnamese (populating both the normal columns and the `_vn` columns).
-     - Generate sequential tokenization arrays for `dailyUseTokensJson`, `dailyUseTokensJson_vn`, `professionalUseTokensJson`, and `professionalUseTokensJson_vn`. Do NOT calculate character offsets/spans yourself. Simply return an array of sequential tokens (including spaces and punctuation) where each token matches:
-       - `{ "t": string, "type": "word" | "verb" | "separable" | "prefix" | "name" | "space" | "punctuation", "lemma": string, "sepId": number }`
-       - Omit `lemma` for space, punctuation, and proper name (type "name").
-       - For separable verbs, assign the same integer `sepId` to both the verb stem token and its prefix token (e.g., `{"t": "hole", "type": "separable", "lemma": "abholen", "sepId": 1}` and `{"t": "ab", "type": "prefix", "sepId": 1}`).
-     - Pass these sequential tokenization structures as raw JSON arrays (not stringified) to `update_vocabulary`.
      - Set `isProcessed` to `true` and update the Grist record.
 3. **Writing Corrections**:
    - Query `list_writing_practice` where `status = "pending_correction"`.

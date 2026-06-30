@@ -64,24 +64,68 @@ function compileAnnotatedText(seqTokens) {
   let text = "";
   let currentPos = 0;
   
-  const tempTokens = seqTokens.map((st, idx) => {
+  let isBold = false;
+  let isItalic = false;
+  
+  const tempTokens = [];
+  
+  for (let i = 0; i < seqTokens.length; i++) {
+    const st = seqTokens[i];
+    const t = st.t || "";
+    
+    // Check if this is a bold toggle (double asterisks/underscores)
+    if (t === "**" || t === "__") {
+      isBold = !isBold;
+      continue;
+    }
+    
+    // Check if it is two adjacent single asterisks/underscores representing bold
+    if ((t === "*" && i + 1 < seqTokens.length && seqTokens[i + 1].t === "*") ||
+        (t === "_" && i + 1 < seqTokens.length && seqTokens[i + 1].t === "_")) {
+      isBold = !isBold;
+      i++; // skip next asterisk
+      continue;
+    }
+    
+    // Check if this is an italic toggle (single asterisk/underscore)
+    if (t === "*" || t === "_") {
+      isItalic = !isItalic;
+      continue;
+    }
+    
+    // Check if the token text itself is wrapped in bold/italic (e.g. "**Quellcode**")
+    let cleanText = t;
+    let tokenBold = isBold;
+    let tokenItalic = isItalic;
+    
+    if ((cleanText.startsWith("**") && cleanText.endsWith("**")) || (cleanText.startsWith("__") && cleanText.endsWith("__"))) {
+      tokenBold = true;
+      cleanText = cleanText.slice(2, -2);
+    } else if ((cleanText.startsWith("*") && cleanText.endsWith("*")) || (cleanText.startsWith("_") && cleanText.endsWith("_"))) {
+      tokenItalic = true;
+      cleanText = cleanText.slice(1, -1);
+    }
+    
     const start = currentPos;
-    const end = currentPos + st.t.length;
-    text += st.t;
+    const end = currentPos + cleanText.length;
+    text += cleanText;
     currentPos = end;
     
-    return {
-      index: idx,
-      text: st.t,
+    tempTokens.push({
+      index: tempTokens.length, // temporary index
+      text: cleanText,
       spans: [[start, end]],
-      type: st.type || (st.t.trim() ? "word" : "space"),
+      type: st.type || (cleanText.trim() ? "word" : "space"),
       lemma: st.lemma,
-      sepId: st.sepId
-    };
-  });
+      sepId: st.sepId,
+      bold: tokenBold,
+      italic: tokenItalic
+    });
+  }
   
   const sepMap = new Map();
-  tempTokens.forEach((t) => {
+  tempTokens.forEach((t, idx) => {
+    t.index = idx;
     if (t.sepId !== undefined) {
       if (t.type === "separable" || t.type === "verb" || (t.lemma && !t.type?.includes("prefix"))) {
         sepMap.set(t.sepId, t.index);
@@ -106,7 +150,9 @@ function compileAnnotatedText(seqTokens) {
       index: finalTokens.length,
       spans: t.spans,
       type: t.type,
-      lemma: t.lemma
+      lemma: t.lemma,
+      bold: t.bold || undefined,
+      italic: t.italic || undefined
     });
   });
   

@@ -252,21 +252,27 @@ export async function listVocabulary(
   // Resolve custom profession usage overrides
   try {
     const userProfession = await getProfileProfession(resolvedUserId);
-    if (userProfession && userProfession !== 'software_engineer' && res.records.length > 0) {
+    if (userProfession && res.records.length > 0) {
       const vocabIds = res.records.map(r => r.id);
-      const usagesQuery = `?filter=${encodeURIComponent(JSON.stringify({ vocabId: vocabIds, profession: [userProfession] }))}`;
+      const usagesQuery = `?filter=${encodeURIComponent(JSON.stringify({ vocabId: vocabIds, profession: [userProfession, 'general'] }))}`;
       const usagesRes = await gristGet<GristResponse<VocabularyUsageFields>>(`/tables/VocabularyUsage/records${usagesQuery}`);
-      const usagesMap = new Map<number, any>();
+      
+      // Map: vocabId -> { profession -> fields }
+      const usagesMap = new Map<number, Record<string, VocabularyUsageFields>>();
 
       for (const record of usagesRes.records) {
         const vId = Array.isArray(record.fields.vocabId) ? record.fields.vocabId[1] : record.fields.vocabId;
         if (typeof vId === 'number') {
-          usagesMap.set(vId, record.fields);
+          if (!usagesMap.has(vId)) {
+            usagesMap.set(vId, {});
+          }
+          usagesMap.get(vId)![record.fields.profession] = record.fields;
         }
       }
 
       for (const record of res.records) {
-        const usage = usagesMap.get(record.id);
+        const profMap = usagesMap.get(record.id);
+        const usage = profMap ? (profMap[userProfession] || profMap['general']) : null;
         if (usage) {
           if (usage.dailyUse) record.fields.dailyUse = usage.dailyUse;
           if (usage.dailyUse_vn) record.fields.dailyUse_vn = usage.dailyUse_vn;
@@ -298,17 +304,20 @@ export async function getVocabularyByWord(word: string | string[]): Promise<Voca
   if (item && resolvedUserId) {
     try {
       const userProfession = await getProfileProfession(resolvedUserId);
-      if (userProfession && userProfession !== 'software_engineer') {
-        const usage = await getVocabularyUsageForUser(item.id, userProfession);
-        if (usage) {
-          if (usage.fields.dailyUse) item.fields.dailyUse = usage.fields.dailyUse;
-          if (usage.fields.dailyUse_vn) item.fields.dailyUse_vn = usage.fields.dailyUse_vn;
-          if (usage.fields.professionalUse) item.fields.professionalUse = usage.fields.professionalUse;
-          if (usage.fields.professionalUse_vn) item.fields.professionalUse_vn = usage.fields.professionalUse_vn;
-          if (usage.fields.tips) item.fields.tips = usage.fields.tips;
-          if (usage.fields.tips_vn) item.fields.tips_vn = usage.fields.tips_vn;
-          if (usage.fields.caution) item.fields.caution = usage.fields.caution;
-          if (usage.fields.caution_vn) item.fields.caution_vn = usage.fields.caution_vn;
+      if (userProfession) {
+        const usagesRes = await listVocabularyUsage(item.id);
+        const usages = usagesRes.records;
+        const targetUsage = usages.find(u => u.fields.profession === userProfession) || usages.find(u => u.fields.profession === 'general');
+        if (targetUsage) {
+          const usage = targetUsage.fields;
+          if (usage.dailyUse) item.fields.dailyUse = usage.dailyUse;
+          if (usage.dailyUse_vn) item.fields.dailyUse_vn = usage.dailyUse_vn;
+          if (usage.professionalUse) item.fields.professionalUse = usage.professionalUse;
+          if (usage.professionalUse_vn) item.fields.professionalUse_vn = usage.professionalUse_vn;
+          if (usage.tips) item.fields.tips = usage.tips;
+          if (usage.tips_vn) item.fields.tips_vn = usage.tips_vn;
+          if (usage.caution) item.fields.caution = usage.caution;
+          if (usage.caution_vn) item.fields.caution_vn = usage.caution_vn;
         }
       }
     } catch (err) {
@@ -999,6 +1008,9 @@ Provide the response as a JSON object matching this schema:
 
   const parsed = safeJsonParse(replyText);
 
+  // Find the software_engineer usage to populate the default table fields
+  const seUsage = (parsed.usages || []).find((u: any) => u.profession === 'software_engineer') || (parsed.usages || [])[0] || {};
+
   const gristRes = await createVocabulary({
     word: parsed.word,
     meanings: parsed.meanings,
@@ -1007,6 +1019,14 @@ Provide the response as a JSON object matching this schema:
     type: "new",
     grammar: parsed.grammar,
     grammar_vn: parsed.grammar_vn,
+    dailyUse: seUsage.dailyUse || "",
+    dailyUse_vn: seUsage.dailyUse_vn || "",
+    professionalUse: seUsage.professionalUse || "",
+    professionalUse_vn: seUsage.professionalUse_vn || "",
+    tips: seUsage.tips || "",
+    tips_vn: seUsage.tips_vn || "",
+    caution: seUsage.caution || "",
+    caution_vn: seUsage.caution_vn || "",
     isProcessed: true,
     ...(resolvedUserId ? { userId: resolvedUserId } : {}),
   });
