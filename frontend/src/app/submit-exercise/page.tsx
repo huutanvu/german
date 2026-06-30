@@ -123,6 +123,17 @@ export default function SubmitExercisePage() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      handlePayloadChange(text);
+    };
+    reader.readAsText(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setJsonError(null);
@@ -217,7 +228,8 @@ CRITICAL:
 1. Both tokensJson and questionsJson must be raw JSON objects/arrays (not stringified or escaped). We stringify them later.
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 3. The "topic" field value MUST be written in German.
-4. The "germanText" must be at least 2 paragraphs long and MUST be strictly based on current news facts related to this topic.`;
+4. The "germanText" must be at least 2 paragraphs long and MUST be strictly based on current news facts related to this topic.
+5. The output must be a downloadable JSON file.`;
     }
 
     if (type === 'writing') {
@@ -233,7 +245,9 @@ Provide the output as a single, valid JSON object matching this schema:
   "description_vn": "[A detailed description and instructions in Vietnamese guiding the user on what to write in German, specifying grammar/lexical goals]"
 }
 
-CRITICAL: The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.`;
+CRITICAL: 
+1. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.
+2. The output must be a downloadable JSON file.`;
     }
 
     if (type === 'speaking') {
@@ -271,7 +285,8 @@ Tokenization Rules:
 
 CRITICAL: 
 1. The targetTokensJson must be a raw JSON object (not stringified or escaped). We stringify it later.
-2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.`;
+2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.
+3. The output must be a downloadable JSON file.`;
     }
 
     // grammar
@@ -306,7 +321,8 @@ CRITICAL:
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 3. The "topic" field value MUST be written in German.
 4. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.
-5. question_vn is the Vietnamese version of question, but only the part that is in English. For example: is this sentence grammatically correct? <German question> becomes Câu này có đúng ngữ pháp không? <German question>`;
+5. question_vn is the Vietnamese version of question, but only the part that is in English. For example: is this sentence grammatically correct? <German question> becomes Câu này có đúng ngữ pháp không? <German question>
+6. The output must be a downloadable JSON file.`;
   };
 
   const handleCopyPrompt = () => {
@@ -385,9 +401,29 @@ CRITICAL:
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
-                  JSON Payload
-                </label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">
+                    JSON Payload
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="json-file-upload"
+                    />
+                    <label
+                      htmlFor="json-file-upload"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold transition-all cursor-pointer border border-gray-200 dark:border-slate-700"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Upload JSON File
+                    </label>
+                  </div>
+                </div>
                 <textarea
                   value={payload}
                   onChange={(e) => handlePayloadChange(e.target.value)}
