@@ -7,7 +7,7 @@ import type {
   ReadingPracticeFields,
   SpeakingPracticeFields,
 } from '../types.js';
-
+import { compileTokenInput } from '../utils/compiler.js';
 const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 function isLevelLowerOrEqual(itemLevel: string, userLevel: string): boolean {
@@ -190,13 +190,24 @@ export function registerExerciseTools(server: McpServer) {
         return { content: [{ type: 'text' as const, text: `Error: userId is required for submissions.` }] };
       }
 
+      let finalCorrectedTokens = correctedTokensJson;
+      let finalCorrectedParagraph = fields.correctedParagraph;
+      if (correctedTokensJson) {
+        const compiled = compileTokenInput(correctedTokensJson);
+        if (compiled && compiled.tokens) {
+          finalCorrectedTokens = compiled;
+          finalCorrectedParagraph = compiled.text;
+        }
+      }
+
       await gristPut('/tables/WritingPracticeSubmission/records', {
         records: [
           {
             require: { practiceId, userId },
             fields: {
               ...fields,
-              correctedTokensJson: correctedTokensJson ? (typeof correctedTokensJson === 'string' ? correctedTokensJson : JSON.stringify(correctedTokensJson)) : undefined,
+              correctedParagraph: finalCorrectedParagraph,
+              correctedTokensJson: finalCorrectedTokens ? (typeof finalCorrectedTokens === 'string' ? finalCorrectedTokens : JSON.stringify(finalCorrectedTokens)) : undefined,
               practiceId,
               userId,
               date: fields.date || new Date().toISOString().split('T')[0],
@@ -298,14 +309,24 @@ export function registerExerciseTools(server: McpServer) {
 
       // Case A: Create/update template
       if (germanText && !fields.userAnswersJson) {
+        let finalTokens = tokensJson;
+        let finalGermanText = germanText;
+        if (tokensJson) {
+          const compiled = compileTokenInput(tokensJson);
+          if (compiled && compiled.tokens) {
+            finalTokens = compiled;
+            finalGermanText = compiled.text;
+          }
+        }
+
         await gristPut('/tables/ReadingPractice/records', {
           records: [
             {
               require: id ? { id } : { topic: topic || '' },
               fields: {
                 topic: topic || '',
-                germanText,
-                tokensJson: tokensJson ? (typeof tokensJson === 'string' ? tokensJson : JSON.stringify(tokensJson)) : undefined,
+                germanText: finalGermanText,
+                tokensJson: finalTokens ? (typeof finalTokens === 'string' ? finalTokens : JSON.stringify(finalTokens)) : undefined,
                 audioFileId: audioFileId || '',
                 questionsJson: questionsJson ? (typeof questionsJson === 'string' ? questionsJson : JSON.stringify(questionsJson)) : '[]',
                 profession: userProfession,
@@ -446,15 +467,26 @@ export function registerExerciseTools(server: McpServer) {
       const userProfession = await getProfileProfession(userId);
 
       // Case A: Create/update template
+      // Case A: Create/update template
       if (targetText && !fields.userAudioFileId) {
+        let finalTargetTokens = targetTokensJson;
+        let finalTargetText = targetText;
+        if (targetTokensJson) {
+          const compiled = compileTokenInput(targetTokensJson);
+          if (compiled && compiled.tokens) {
+            finalTargetTokens = compiled;
+            finalTargetText = compiled.text;
+          }
+        }
+
         await gristPut('/tables/SpeakingPractice/records', {
           records: [
             {
               require: id ? { id } : { topic: topic || '' },
               fields: {
                 topic: topic || '',
-                targetText,
-                targetTokensJson: targetTokensJson ? (typeof targetTokensJson === 'string' ? targetTokensJson : JSON.stringify(targetTokensJson)) : undefined,
+                targetText: finalTargetText,
+                targetTokensJson: finalTargetTokens ? (typeof finalTargetTokens === 'string' ? finalTargetTokens : JSON.stringify(finalTargetTokens)) : undefined,
                 targetAudioFileId: targetAudioFileId || '',
                 profession: userProfession,
               },

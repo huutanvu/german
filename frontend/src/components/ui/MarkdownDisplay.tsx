@@ -2,20 +2,12 @@
 
 import React, { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { getVocabularyByWord, lookupAndAddWord, resolveWordWithGemini } from "@/lib/grist";
-import { detectSeparablePrefix } from "@/lib/german";
+import { getVocabularyByWord, lookupAndAddWord } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 
-// Tokens to highlight across the whole text when a word is looked up (legacy fallback)
-interface HighlightState {
-  sentence: string;      // which sentence the click came from
-  tokens: string[];      // lowercased tokens to highlight (clicked word + separable prefix)
-}
-
 interface MarkdownDisplayProps {
-  content: string;
-  tokensJson?: string;   // Optional pre-computed tokens structure
-  // canonical: resolved form | sentence | original clicked token | separable prefix if any
+  content: string; // Left for descriptive/fallback render if needed, but primary rendering uses tokensJson
+  tokensJson: string; // Now strictly required
   onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void;
   className?: string;
 }
@@ -26,55 +18,56 @@ export function MarkdownDisplay({
   onWordLookup,
   className = "",
 }: MarkdownDisplayProps) {
-  const [highlight, setHighlight] = useState<HighlightState | null>(null);
-  const [highlightedTokenIndex, setHighlightedTokenIndex] = useState<number | null>(null);
+  const [hoveredTokenIndex, setHoveredTokenIndex] = useState<number | null>(null);
+  const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
 
-  // 1. If pre-computed tokenization is provided, render using token segments
   let annotatedText: any = null;
   if (tokensJson) {
     try {
-      annotatedText = JSON.parse(tokensJson);
+      annotatedText = typeof tokensJson === "string" ? JSON.parse(tokensJson) : tokensJson;
     } catch (e) {
       console.error("Failed to parse tokensJson", e);
     }
   }
 
-  if (annotatedText && Array.isArray(annotatedText.tokens) && annotatedText.text) {
-    const segments = buildTokenSegments(annotatedText);
+  if (!annotatedText || !Array.isArray(annotatedText.tokens) || !annotatedText.text) {
     return (
-      <div className={`space-y-4 markdown-preview select-text leading-relaxed font-sans text-sm text-gray-800 dark:text-gray-200 ${className}`}>
-        {renderSegments(
-          segments,
-          annotatedText.text,
-          highlightedTokenIndex,
-          setHighlightedTokenIndex,
-          onWordLookup
-        )}
+      <div className={`text-sm text-gray-500 dark:text-slate-400 italic ${className}`}>
+        No interactive token information available.
       </div>
     );
   }
 
-  // 2. Legacy fallback: Split by sentences/words at runtime
+  const segments = buildTokenSegments(annotatedText);
+  return (
+    <div className={`space-y-4 markdown-preview select-text leading-relaxed font-sans text-sm text-gray-800 dark:text-gray-200 ${className}`}>
+      {renderSegments(
+        segments,
+        annotatedText.text,
+        hoveredTokenIndex,
+        selectedTokenIndex,
+        setHoveredTokenIndex,
+        setSelectedTokenIndex,
+        onWordLookup
+      )}
+    </div>
+  );
+}
+
+export function PlainMarkdown({
+  content,
+  className = "",
+}: {
+  content: string;
+  className?: string;
+}) {
+  if (!content) return null;
   // Strip Obsidian-style double bracket links
   const cleanContent = content.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, target, display) =>
     display || target
   );
 
   const blocks = cleanContent.split(/\n\s*\n/);
-
-  function handleInternalWordLookup(
-    canonical: string,
-    sentence: string,
-    clickedWord: string,
-    separablePrefix?: string
-  ) {
-    const tokens = [
-      clickedWord.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase(),
-      ...(separablePrefix ? [separablePrefix.toLowerCase()] : []),
-    ];
-    setHighlight({ sentence, tokens });
-    onWordLookup(canonical, sentence, clickedWord, separablePrefix);
-  }
 
   return (
     <div className={`space-y-4 markdown-preview select-text ${className}`}>
@@ -89,7 +82,7 @@ export function MarkdownDisplay({
           const Tag = `h${Math.min(depth + 1, 6)}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
           return (
             <Tag key={blockIdx} className="font-bold text-gray-900 dark:text-gray-100 mt-4 mb-2">
-              <TextBlock text={text} onWordLookup={handleInternalWordLookup} highlight={highlight} />
+              {text}
             </Tag>
           );
         }
@@ -100,7 +93,7 @@ export function MarkdownDisplay({
             <ul key={blockIdx} className="list-disc pl-5 space-y-1 my-2">
               {items.map((item, itemIdx) => (
                 <li key={itemIdx} className="text-sm text-gray-800 dark:text-gray-200">
-                  <TextBlock text={item} onWordLookup={handleInternalWordLookup} highlight={highlight} />
+                  {item}
                 </li>
               ))}
             </ul>
@@ -109,7 +102,7 @@ export function MarkdownDisplay({
 
         return (
           <p key={blockIdx} className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-sans">
-            <TextBlock text={trimmed} onWordLookup={handleInternalWordLookup} highlight={highlight} />
+            {trimmed}
           </p>
         );
       })}
@@ -190,8 +183,10 @@ function findSentenceContext(text: string, pos: number): string {
 function renderSegments(
   segments: any[],
   fullText: string,
-  highlightedTokenIndex: number | null,
-  setHighlightedTokenIndex: (index: number | null) => void,
+  hoveredTokenIndex: number | null,
+  selectedTokenIndex: number | null,
+  setHoveredTokenIndex: (index: number | null) => void,
+  setSelectedTokenIndex: (index: number | null) => void,
   onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void
 ) {
   return segments.map((seg, idx) => {
@@ -224,7 +219,7 @@ function renderSegments(
     }
 
     const sentence = findSentenceContext(fullText, seg.start);
-    const isHighlighted = highlightedTokenIndex === token.index;
+    const isHighlighted = (hoveredTokenIndex === token.index) || (selectedTokenIndex === token.index);
 
     return (
       <TokenWordSpan
@@ -235,7 +230,8 @@ function renderSegments(
         isHighlighted={isHighlighted}
         fullText={fullText}
         onWordLookup={onWordLookup}
-        onHighlightToken={setHighlightedTokenIndex}
+        onHoverToken={setHoveredTokenIndex}
+        onSelectToken={setSelectedTokenIndex}
       />
     );
   });
@@ -250,7 +246,8 @@ function TokenWordSpan({
   isHighlighted,
   fullText,
   onWordLookup,
-  onHighlightToken,
+  onHoverToken,
+  onSelectToken,
 }: {
   text: string;
   token: any;
@@ -258,13 +255,14 @@ function TokenWordSpan({
   isHighlighted: boolean;
   fullText: string;
   onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void;
-  onHighlightToken: (index: number | null) => void;
+  onHoverToken: (index: number | null) => void;
+  onSelectToken: (index: number | null) => void;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "resolving" | "processing">("idle");
 
-  const isInteractive = token && (token.type === "word" || token.type === "verb" || token.type === "separable");
+  const isInteractive = token && (token.type !== "space" && token.type !== "punctuation" && token.type !== "name");
 
   if (!isInteractive) {
     return <span>{text}</span>;
@@ -278,11 +276,11 @@ function TokenWordSpan({
   async function handleLookup() {
     setStatus("resolving");
     try {
-      const canonical = token.lemma || text;
+      const canonical = (token.lemma || text).trim();
       
       // Determine if this is a separable verb and extract prefix from second span
       let separablePrefix = undefined;
-      if (token.type === "separable" && Array.isArray(token.spans) && token.spans.length > 1) {
+      if (Array.isArray(token.spans) && token.spans.length > 1) {
         const [pStart, pEnd] = token.spans[1];
         separablePrefix = fullText.slice(pStart, pEnd);
       }
@@ -290,7 +288,7 @@ function TokenWordSpan({
       const item = await getVocabularyByWord([canonical]);
 
       if (item) {
-        onHighlightToken(token.index);
+        onSelectToken(token.index);
         onWordLookup(canonical, sentence, text, separablePrefix);
         setOpen(false);
         setStatus("idle");
@@ -298,7 +296,8 @@ function TokenWordSpan({
         setStatus("processing");
         const newItem = await lookupAndAddWord(canonical, sentence);
         if (newItem) {
-          onHighlightToken(token.index);
+          onSelectToken(newItem.fields.word === canonical ? token.index : token.index); // keep index
+          onSelectToken(token.index);
           onWordLookup(newItem.fields.word, sentence, text, separablePrefix);
         }
         setOpen(false);
@@ -315,6 +314,8 @@ function TokenWordSpan({
     <Popover.Root open={open} onOpenChange={handleOpenChange}>
       <Popover.Trigger asChild>
         <span
+          onMouseEnter={() => onHoverToken(token.index)}
+          onMouseLeave={() => onHoverToken(null)}
           className={[
             "cursor-pointer rounded px-0.5 transition-colors duration-150 border-b border-dotted border-gray-400 dark:border-slate-500",
             isHighlighted
@@ -324,156 +325,6 @@ function TokenWordSpan({
           title="Click to lookup"
         >
           {text}
-        </span>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          side="bottom"
-          align="center"
-          sideOffset={6}
-          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-xl p-2 z-50 flex flex-col gap-1 min-w-[150px] font-sans text-xs outline-none"
-        >
-          {status === "idle" && (
-            <button
-              onClick={handleLookup}
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200 rounded font-semibold transition-colors cursor-pointer"
-            >
-              {t("Lookup", "Tra cứu")}
-            </button>
-          )}
-          {status === "resolving" && (
-            <div className="py-2 px-3 text-center text-gray-400 animate-pulse font-medium">
-              {t("Looking up...", "Đang tra cứu...")}
-            </div>
-          )}
-          {status === "processing" && (
-            <div className="py-2 px-3 text-center text-gray-400 animate-pulse font-medium">
-              {t("Generating...", "Đang tạo...")}
-            </div>
-          )}
-          <Popover.Arrow className="fill-white dark:fill-slate-900 stroke-gray-200 dark:stroke-slate-800 stroke-[1px]" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-// ─── Legacy TextBlock / WordSpan fallback components ───
-
-function TextBlock({
-  text,
-  onWordLookup,
-  highlight,
-}: {
-  text: string;
-  onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void;
-  highlight: HighlightState | null;
-}) {
-  const sentenceRegex = /[^.!?]+[.!?]?(?:\s+|$)/g;
-  const sentences = text.match(sentenceRegex) || [text];
-
-  return (
-    <>
-      {sentences.map((sentence, sIdx) => {
-        const boldParts = sentence.split(/\*\*/);
-        return (
-          <span key={sIdx} className="sentence-block">
-            {boldParts.map((part, pIdx) => {
-              const isBold = pIdx % 2 !== 0;
-              const tokens = part.split(/(\s+)/);
-              return (
-                <span key={pIdx} className={isBold ? "font-bold text-gray-950 dark:text-white" : ""}>
-                  {tokens.map((token, tIdx) => {
-                    const isWord = /\w+/.test(token);
-                    if (!isWord) return <span key={tIdx}>{token}</span>;
-
-                    const clean = token.replace(/[.,/#!$%^&*;:{}=\-_`~()?]/g, "").toLowerCase();
-                    const isHighlighted =
-                      highlight?.sentence === sentence &&
-                      highlight.tokens.includes(clean);
-
-                    return (
-                      <WordSpan
-                        key={tIdx}
-                        word={token}
-                        sentence={sentence}
-                        onWordLookup={onWordLookup}
-                        isHighlighted={isHighlighted}
-                      />
-                    );
-                  })}
-                </span>
-              );
-            })}
-          </span>
-        );
-      })}
-    </>
-  );
-}
-
-function WordSpan({
-  word,
-  sentence,
-  onWordLookup,
-  isHighlighted,
-}: {
-  word: string;
-  sentence: string;
-  onWordLookup: (canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) => void;
-  isHighlighted: boolean;
-}) {
-  const { t } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<"idle" | "resolving" | "processing">("idle");
-
-  function handleOpenChange(isOpen: boolean) {
-    setOpen(isOpen);
-    if (!isOpen) setStatus("idle");
-  }
-
-  async function handleLookup() {
-    setStatus("resolving");
-    try {
-      const canonical = await resolveWordWithGemini(word, sentence);
-
-      const separablePrefix = detectSeparablePrefix(canonical) ?? undefined;
-
-      const item = await getVocabularyByWord([canonical]);
-
-      if (item) {
-        onWordLookup(canonical, sentence, word, separablePrefix);
-        setOpen(false);
-        setStatus("idle");
-      } else {
-        setStatus("processing");
-        const newItem = await lookupAndAddWord(canonical, sentence);
-        if (newItem) {
-          onWordLookup(newItem.fields.word, sentence, word, separablePrefix);
-        }
-        setOpen(false);
-        setStatus("idle");
-      }
-    } catch (err) {
-      console.error("Lookup failed:", err);
-      setOpen(false);
-      setStatus("idle");
-    }
-  }
-
-  return (
-    <Popover.Root open={open} onOpenChange={handleOpenChange}>
-      <Popover.Trigger asChild>
-        <span
-          className={[
-            "cursor-pointer rounded px-0.5 transition-colors duration-150",
-            isHighlighted
-              ? "bg-yellow-200 dark:bg-yellow-700/60 text-yellow-900 dark:text-yellow-100"
-              : "hover:bg-blue-100 hover:text-blue-900 dark:hover:bg-blue-950/40 dark:hover:text-blue-200",
-          ].join(" ")}
-          title="Click to lookup"
-        >
-          {word}
         </span>
       </Popover.Trigger>
       <Popover.Portal>

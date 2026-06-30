@@ -230,7 +230,7 @@ export default function ReadingDetail({ id }: { id: number }) {
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
           <MarkdownDisplay
             content={exercise.fields.germanText}
-            tokensJson={exercise.fields.tokensJson}
+            tokensJson={exercise.fields.tokensJson || ""}
             onWordLookup={handleWordLookup}
           />
         </div>

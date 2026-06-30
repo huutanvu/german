@@ -134,6 +134,66 @@ export default function SubmitExercisePage() {
     reader.readAsText(file);
   };
 
+  const compileAnnotatedText = (seqTokens: any[]) => {
+    let text = "";
+    let currentPos = 0;
+    
+    const tempTokens = seqTokens.map((st: any, idx: number) => {
+      const start = currentPos;
+      const end = currentPos + st.t.length;
+      text += st.t;
+      currentPos = end;
+      
+      return {
+        index: idx,
+        text: st.t,
+        spans: [[start, end]],
+        type: st.type || (st.t.trim() ? "word" : "space"),
+        lemma: st.lemma,
+        sepId: st.sepId
+      };
+    });
+    
+    const sepMap = new Map<number, number>();
+    tempTokens.forEach((t) => {
+      if (t.sepId !== undefined) {
+        if (t.type === "separable" || t.type === "verb" || (t.lemma && !t.type?.includes("prefix"))) {
+          sepMap.set(t.sepId, t.index);
+        }
+      }
+    });
+    
+    const finalTokens: any[] = [];
+    tempTokens.forEach((t) => {
+      if (t.sepId !== undefined) {
+        const primaryIdx = sepMap.get(t.sepId);
+        if (primaryIdx !== undefined && primaryIdx !== t.index) {
+          const primaryToken = tempTokens[primaryIdx];
+          if (primaryToken) {
+            primaryToken.spans.push(t.spans[0]);
+            primaryToken.type = "separable";
+          }
+          return;
+        }
+      }
+      finalTokens.push({
+        index: finalTokens.length,
+        spans: t.spans,
+        type: t.type,
+        lemma: t.lemma
+      });
+    });
+    
+    finalTokens.forEach((t, idx) => {
+      t.index = idx;
+    });
+    
+    return {
+      text,
+      tokens: finalTokens
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setJsonError(null);
@@ -154,11 +214,47 @@ export default function SubmitExercisePage() {
     if (parsed.questionsJson) {
       parsed.questionsJson = JSON.stringify(parsed.questionsJson);
     }
-    if (parsed.tokensJson && typeof parsed.tokensJson !== 'string') {
-      parsed.tokensJson = JSON.stringify(parsed.tokensJson);
+
+    // Process Reading practice tokens
+    if (parsed.tokensJson && typeof parsed.tokensJson === 'object') {
+      const tokensObj = parsed.tokensJson;
+      if (Array.isArray(tokensObj.tokens) && tokensObj.tokens.length > 0 && tokensObj.tokens[0].t !== undefined) {
+        const compiled = compileAnnotatedText(tokensObj.tokens);
+        parsed.germanText = compiled.text;
+        parsed.tokensJson = JSON.stringify(compiled);
+      } else {
+        parsed.tokensJson = JSON.stringify(tokensObj);
+      }
+    } else if (parsed.tokensJson && typeof parsed.tokensJson === 'string') {
+      try {
+        const tokensObj = JSON.parse(parsed.tokensJson);
+        if (Array.isArray(tokensObj.tokens) && tokensObj.tokens.length > 0 && tokensObj.tokens[0].t !== undefined) {
+          const compiled = compileAnnotatedText(tokensObj.tokens);
+          parsed.germanText = compiled.text;
+          parsed.tokensJson = JSON.stringify(compiled);
+        }
+      } catch {}
     }
-    if (parsed.targetTokensJson && typeof parsed.targetTokensJson !== 'string') {
-      parsed.targetTokensJson = JSON.stringify(parsed.targetTokensJson);
+
+    // Process Speaking practice tokens
+    if (parsed.targetTokensJson && typeof parsed.targetTokensJson === 'object') {
+      const tokensObj = parsed.targetTokensJson;
+      if (Array.isArray(tokensObj.tokens) && tokensObj.tokens.length > 0 && tokensObj.tokens[0].t !== undefined) {
+        const compiled = compileAnnotatedText(tokensObj.tokens);
+        parsed.targetText = compiled.text;
+        parsed.targetTokensJson = JSON.stringify(compiled);
+      } else {
+        parsed.targetTokensJson = JSON.stringify(tokensObj);
+      }
+    } else if (parsed.targetTokensJson && typeof parsed.targetTokensJson === 'string') {
+      try {
+        const tokensObj = JSON.parse(parsed.targetTokensJson);
+        if (Array.isArray(tokensObj.tokens) && tokensObj.tokens.length > 0 && tokensObj.tokens[0].t !== undefined) {
+          const compiled = compileAnnotatedText(tokensObj.tokens);
+          parsed.targetText = compiled.text;
+          parsed.targetTokensJson = JSON.stringify(compiled);
+        }
+      } catch {}
     }
 
     setSubmitting(true);
@@ -224,6 +320,22 @@ Tokenization Rules:
 5. Nouns must include definite article (der/die/das) in the lemma (e.g., "die Patientenaufnahme" instead of "Patientenaufnahme").
 6. Verbs must use bare infinitive (e.g. "sein" instead of "ist"). Adjectives must be uninflected base form (e.g. "wichtig").
 
+CRITICAL Tokenization Example for Separable Verbs:
+Sentence: "Ich hole ihn ab." (Length: 16 characters)
+Offsets: I(0) c(1) h(2)  (3) h(4) o(5) l(6) e(7)  (8) i(9) h(10) n(11)  (12) a(13) b(14) .(15)
+The separable verb "abholen" consists of stem "hole" at [4, 8) and prefix "ab" at [13, 15).
+The tokens list MUST be:
+[
+  { "index": 0, "spans": [[0, 3]], "type": "word", "lemma": "ich" },
+  { "index": 1, "spans": [[3, 4]], "type": "space" },
+  { "index": 2, "spans": [[4, 8], [13, 15]], "type": "separable", "lemma": "abholen" },
+  { "index": 3, "spans": [[8, 9]], "type": "space" },
+  { "index": 4, "spans": [[9, 12]], "type": "word", "lemma": "er" },
+  { "index": 5, "spans": [[12, 13]], "type": "space" },
+  // Note: "ab" is omitted here because it is already mapped as the second span under the "separable" token at index 2!
+  { "index": 6, "spans": [[15, 16]], "type": "punctuation" }
+]
+
 CRITICAL: 
 1. Both tokensJson and questionsJson must be raw JSON objects/arrays (not stringified or escaped). We stringify them later.
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
@@ -283,6 +395,22 @@ Tokenization Rules:
 5. Nouns must include definite article (der/die/das) in the lemma (e.g. "der Tag").
 6. Verbs must use bare infinitive. Adjectives must be uninflected base form.
 
+CRITICAL Tokenization Example for Separable Verbs:
+Sentence: "Ich hole ihn ab." (Length: 16 characters)
+Offsets: I(0) c(1) h(2)  (3) h(4) o(5) l(6) e(7)  (8) i(9) h(10) n(11)  (12) a(13) b(14) .(15)
+The separable verb "abholen" consists of stem "hole" at [4, 8) and prefix "ab" at [13, 15).
+The tokens list MUST be:
+[
+  { "index": 0, "spans": [[0, 3]], "type": "word", "lemma": "ich" },
+  { "index": 1, "spans": [[3, 4]], "type": "space" },
+  { "index": 2, "spans": [[4, 8], [13, 15]], "type": "separable", "lemma": "abholen" },
+  { "index": 3, "spans": [[8, 9]], "type": "space" },
+  { "index": 4, "spans": [[9, 12]], "type": "word", "lemma": "er" },
+  { "index": 5, "spans": [[12, 13]], "type": "space" },
+  // Note: "ab" is omitted here because it is already mapped as the second span under the "separable" token at index 2!
+  { "index": 6, "spans": [[15, 16]], "type": "punctuation" }
+]
+
 CRITICAL: 
 1. The targetTokensJson must be a raw JSON object (not stringified or escaped). We stringify it later.
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.
@@ -304,8 +432,8 @@ Provide the output as a single, valid JSON object matching this schema:
     {
       "id": 1,
       "type": "fill_in_gap",
-      "question": "The question in German. For 'fill_in_gap', use '____' for the missing grammar element (e.g., article, ending, preposition). Do NOT include options in brackets in the question string.",
-      "question_vn": "The question in Vietnamese for the English parts.",
+      "question": "The question in German or English+German. For 'fill_in_gap', use '____' for the missing grammar element (e.g., article, ending, preposition). Do NOT include options in brackets in the question string.",
+      "question_vn": "The Vietnamese version of the question. Translate only the English instructional/commentary parts into Vietnamese, leaving all German words, phrases, and sentences verbatim and untranslated (e.g. if question is 'Is this sentence grammatically correct? \"Ich bin Anna\"', the question_vn MUST be 'Câu này có đúng ngữ pháp không? \"Ich bin Anna\"').",
       "options": ["Option A", "Option B", ...],
       "correct_answer": "Option A",
       "difficulty": 1,
@@ -317,12 +445,13 @@ Provide the output as a single, valid JSON object matching this schema:
 }
 
 CRITICAL: 
-1. The questionsJson must be a raw JSON array of objects (not stringified or escaped). We stringify it later.
-2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
-3. The "topic" field value MUST be written in German.
-4. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.
-5. question_vn is the Vietnamese version of question, but only the part that is in English. For example: is this sentence grammatically correct? <German question> becomes Câu này có đúng ngữ pháp không? <German question>
-6. The output must be a downloadable JSON file.`;
+1. The questionsJson array must contain at least 10 questions (up to 15 questions).
+2. The questionsJson must be a raw JSON array of objects (not stringified or escaped). We stringify it later.
+3. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
+4. The "topic" field value MUST be written in German.
+5. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.
+6. The question_vn field must only translate the English parts of the question, keeping all German words and sentences intact (e.g. Is this sentence grammatically correct? "Ich bin Anna" becomes Câu này có đúng ngữ pháp không? "Ich bin Anna").
+7. The output must be a downloadable JSON file.`;
   };
 
   const handleCopyPrompt = () => {

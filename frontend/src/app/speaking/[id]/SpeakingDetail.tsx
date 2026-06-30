@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getSpeakingPractice, upsertSpeakingPractice, listSpeakingPractices, createSpeakingPractice, updateSpeakingPractice } from "@/lib/grist";
 import type { SpeakingPractice } from "@/lib/types";
-import { MarkdownDisplay } from "@/components/ui/MarkdownDisplay";
+import { MarkdownDisplay, PlainMarkdown } from "@/components/ui/MarkdownDisplay";
 import { WordLookupSidebar } from "@/components/ui/WordLookupSidebar";
 import { useLanguage } from "@/lib/language-context";
 
@@ -272,7 +272,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
           </span>
           <MarkdownDisplay
             content={exercise.fields.targetText}
-            tokensJson={exercise.fields.targetTokensJson}
+            tokensJson={exercise.fields.targetTokensJson || ""}
             onWordLookup={handleWordLookup}
           />
         </div>
@@ -378,7 +378,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
                     {t("Your Speech Transcript", "Bản dịch chữ giọng nói của bạn")}
                   </span>
                   <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-100 dark:border-slate-800">
-                    <MarkdownDisplay content={exercise.fields.transcript} onWordLookup={handleWordLookup} />
+                    <PlainMarkdown content={exercise.fields.transcript} />
                   </div>
                 </div>
 
@@ -388,7 +388,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
                       {t("Pronunciation Feedback", "Nhận xét phát âm chi tiết")}
                     </span>
                     <div className="bg-red-50/20 dark:bg-red-950/10 p-4 rounded border border-red-200 dark:border-red-900/30">
-                      <MarkdownDisplay content={pronunciationFeedbackVal} onWordLookup={handleWordLookup} />
+                      <PlainMarkdown content={pronunciationFeedbackVal} />
                     </div>
                   </div>
                 )}
@@ -399,7 +399,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
                       {t("Grammar Corrections", "Sửa lỗi ngữ pháp")}
                     </span>
                     <div className="bg-blue-50/20 dark:bg-blue-950/10 p-4 rounded border border-blue-200 dark:border-blue-900/30">
-                      <MarkdownDisplay content={grammarFeedbackVal} onWordLookup={handleWordLookup} />
+                      <PlainMarkdown content={grammarFeedbackVal} />
                     </div>
                   </div>
                 )}

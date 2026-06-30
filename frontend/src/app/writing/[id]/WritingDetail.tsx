@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getWritingPractice, upsertWritingPractice } from "@/lib/grist";
 import type { WritingPractice } from "@/lib/types";
-import { MarkdownDisplay } from "@/components/ui/MarkdownDisplay";
+import { MarkdownDisplay, PlainMarkdown } from "@/components/ui/MarkdownDisplay";
 import { WordLookupSidebar } from "@/components/ui/WordLookupSidebar";
 import { useLanguage } from "@/lib/language-context";
 
@@ -155,7 +155,7 @@ export default function WritingDetail({ id }: { id: number }) {
                   {t("Your Paragraph Draft", "Đoạn văn của bạn")}
                 </span>
                 <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-200 dark:border-slate-800">
-                  <MarkdownDisplay content={exercise.fields.userParagraph} onWordLookup={handleWordLookup} />
+                  <PlainMarkdown content={exercise.fields.userParagraph} />
                 </div>
               </div>
 
@@ -183,7 +183,7 @@ export default function WritingDetail({ id }: { id: number }) {
                   <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded border border-emerald-200 dark:border-emerald-900/40 font-medium">
                     <MarkdownDisplay
                       content={exercise.fields.correctedParagraph}
-                      tokensJson={exercise.fields.correctedTokensJson}
+                      tokensJson={exercise.fields.correctedTokensJson || ""}
                       onWordLookup={handleWordLookup}
                     />
                   </div>
@@ -195,7 +195,7 @@ export default function WritingDetail({ id }: { id: number }) {
                       {t("Detailed Analysis", "Phân tích chi tiết lỗi")}
                     </span>
                     <div className="bg-gray-50 dark:bg-slate-950 p-4 rounded border border-gray-100 dark:border-slate-800">
-                      <MarkdownDisplay content={correctionsVal} onWordLookup={handleWordLookup} />
+                      <PlainMarkdown content={correctionsVal} />
                     </div>
                   </div>
                 )}

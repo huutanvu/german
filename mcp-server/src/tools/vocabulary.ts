@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { gristGet, gristPost, gristPatch, gristFilter } from '../clients/grist.js';
 import type { GristRecordsResponse, VocabularyFields, VocabularyReviewFields, VocabularyUsageFields } from '../types.js';
 
+import { compileTokenInput } from '../utils/compiler.js';
+
 export function registerVocabularyTools(server: McpServer) {
   server.tool(
     'list_vocabulary',
@@ -62,15 +64,24 @@ export function registerVocabularyTools(server: McpServer) {
       userId: z.string().optional().describe('User ID for multi-user support'),
     },
     async ({ dailyUseTokensJson, dailyUseTokensJson_vn, professionalUseTokensJson, professionalUseTokensJson_vn, ...fields }) => {
+      const compDaily = compileTokenInput(dailyUseTokensJson);
+      const compDailyVn = compileTokenInput(dailyUseTokensJson_vn);
+      const compProf = compileTokenInput(professionalUseTokensJson);
+      const compProfVn = compileTokenInput(professionalUseTokensJson_vn);
+
       const result = await gristPost('/tables/Vocabulary/records', {
         records: [
           {
             fields: {
               ...fields,
-              dailyUseTokensJson: dailyUseTokensJson ? (typeof dailyUseTokensJson === 'string' ? dailyUseTokensJson : JSON.stringify(dailyUseTokensJson)) : undefined,
-              dailyUseTokensJson_vn: dailyUseTokensJson_vn ? (typeof dailyUseTokensJson_vn === 'string' ? dailyUseTokensJson_vn : JSON.stringify(dailyUseTokensJson_vn)) : undefined,
-              professionalUseTokensJson: professionalUseTokensJson ? (typeof professionalUseTokensJson === 'string' ? professionalUseTokensJson : JSON.stringify(professionalUseTokensJson)) : undefined,
-              professionalUseTokensJson_vn: professionalUseTokensJson_vn ? (typeof professionalUseTokensJson_vn === 'string' ? professionalUseTokensJson_vn : JSON.stringify(professionalUseTokensJson_vn)) : undefined,
+              dailyUse: compDaily && compDaily.text ? compDaily.text : fields.dailyUse,
+              dailyUse_vn: compDailyVn && compDailyVn.text ? compDailyVn.text : fields.dailyUse_vn,
+              professionalUse: compProf && compProf.text ? compProf.text : fields.professionalUse,
+              professionalUse_vn: compProfVn && compProfVn.text ? compProfVn.text : fields.professionalUse_vn,
+              dailyUseTokensJson: compDaily ? (typeof compDaily === 'string' ? compDaily : JSON.stringify(compDaily)) : undefined,
+              dailyUseTokensJson_vn: compDailyVn ? (typeof compDailyVn === 'string' ? compDailyVn : JSON.stringify(compDailyVn)) : undefined,
+              professionalUseTokensJson: compProf ? (typeof compProf === 'string' ? compProf : JSON.stringify(compProf)) : undefined,
+              professionalUseTokensJson_vn: compProfVn ? (typeof compProfVn === 'string' ? compProfVn : JSON.stringify(compProfVn)) : undefined,
               isProcessed: fields.isProcessed ?? (!!fields.meanings),
               correctCount: 0,
               updatedAt: new Date().toISOString(),
@@ -116,12 +127,21 @@ export function registerVocabularyTools(server: McpServer) {
       isProcessed: z.boolean().optional(),
     },
     async ({ id, dailyUseTokensJson, dailyUseTokensJson_vn, professionalUseTokensJson, professionalUseTokensJson_vn, ...fields }) => {
+      const compDaily = compileTokenInput(dailyUseTokensJson);
+      const compDailyVn = compileTokenInput(dailyUseTokensJson_vn);
+      const compProf = compileTokenInput(professionalUseTokensJson);
+      const compProfVn = compileTokenInput(professionalUseTokensJson_vn);
+
       const patchFields: Partial<VocabularyFields> = {
         ...fields,
-        dailyUseTokensJson: dailyUseTokensJson ? (typeof dailyUseTokensJson === 'string' ? dailyUseTokensJson : JSON.stringify(dailyUseTokensJson)) : undefined,
-        dailyUseTokensJson_vn: dailyUseTokensJson_vn ? (typeof dailyUseTokensJson_vn === 'string' ? dailyUseTokensJson_vn : JSON.stringify(dailyUseTokensJson_vn)) : undefined,
-        professionalUseTokensJson: professionalUseTokensJson ? (typeof professionalUseTokensJson === 'string' ? professionalUseTokensJson : JSON.stringify(professionalUseTokensJson)) : undefined,
-        professionalUseTokensJson_vn: professionalUseTokensJson_vn ? (typeof professionalUseTokensJson_vn === 'string' ? professionalUseTokensJson_vn : JSON.stringify(professionalUseTokensJson_vn)) : undefined,
+        dailyUse: compDaily && compDaily.text ? compDaily.text : fields.dailyUse,
+        dailyUse_vn: compDailyVn && compDailyVn.text ? compDailyVn.text : fields.dailyUse_vn,
+        professionalUse: compProf && compProf.text ? compProf.text : fields.professionalUse,
+        professionalUse_vn: compProfVn && compProfVn.text ? compProfVn.text : fields.professionalUse_vn,
+        dailyUseTokensJson: compDaily ? (typeof compDaily === 'string' ? compDaily : JSON.stringify(compDaily)) : undefined,
+        dailyUseTokensJson_vn: compDailyVn ? (typeof compDailyVn === 'string' ? compDailyVn : JSON.stringify(compDailyVn)) : undefined,
+        professionalUseTokensJson: compProf ? (typeof compProf === 'string' ? compProf : JSON.stringify(compProf)) : undefined,
+        professionalUseTokensJson_vn: compProfVn ? (typeof compProfVn === 'string' ? compProfVn : JSON.stringify(compProfVn)) : undefined,
         updatedAt: new Date().toISOString(),
       };
 

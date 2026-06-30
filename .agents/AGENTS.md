@@ -152,24 +152,25 @@ When executing a correction or generation task:
      - Read the raw clicked `word` and the context.
      - Analyze context sentence to resolve the correct dictionary base form.
      - Update Grist fields with meanings, grammar notes, daily and professional example sentences, tips, and cautions in both English and Vietnamese (populating both the normal columns and the `_vn` columns).
-     - Generate tokenization structures `dailyUseTokensJson`, `dailyUseTokensJson_vn`, `professionalUseTokensJson`, and `professionalUseTokensJson_vn` matching the `AnnotatedText` schema:
-       - `text`: Raw text of the sentence.
-       - `tokens`: Array of Token objects with character-offset `spans: [[start, end], ...]` (separable verbs must have exactly 2 spans: stem and prefix; others 1 span), `type`, and `lemma` (nouns carry article, verbs carry infinitive, adjectives carry uninflected form; omitted for proper names (`type: "name"`), spaces, and punctuation).
-     - Pass these tokenization structures as raw JSON objects (not stringified) to `update_vocabulary`.
+     - Generate sequential tokenization arrays for `dailyUseTokensJson`, `dailyUseTokensJson_vn`, `professionalUseTokensJson`, and `professionalUseTokensJson_vn`. Do NOT calculate character offsets/spans yourself. Simply return an array of sequential tokens (including spaces and punctuation) where each token matches:
+       - `{ "t": string, "type": "word" | "verb" | "separable" | "prefix" | "name" | "space" | "punctuation", "lemma": string, "sepId": number }`
+       - Omit `lemma` for space, punctuation, and proper name (type "name").
+       - For separable verbs, assign the same integer `sepId` to both the verb stem token and its prefix token (e.g., `{"t": "hole", "type": "separable", "lemma": "abholen", "sepId": 1}` and `{"t": "ab", "type": "prefix", "sepId": 1}`).
+     - Pass these sequential tokenization structures as raw JSON arrays (not stringified) to `update_vocabulary`.
      - Set `isProcessed` to `true` and update the Grist record.
 3. **Writing Corrections**:
    - Query `list_writing_practice` where `status = "pending_correction"`.
    - Perform sentence-by-sentence analysis (Grammar, Orthography, Lexicon) in both English (`correctionsJson` as raw JSON array) and Vietnamese (`correctionsJson_vn` as raw JSON array).
-   - Generate `correctedTokensJson` for `correctedParagraph` matching the `AnnotatedText` schema (pass as raw JSON object).
+   - Generate `correctedTokensJson` for the proposed `correctedParagraph` using the sequential token schema: `{ "tokens": [ { "t": string, "type": string, "lemma": string, "sepId": number } ] }`. Do NOT calculate character offsets/spans yourself.
    - Call `upsert_writing_practice` with these fields and set status to `corrected`.
 4. **Reading & Exercise Generation**:
    - When generating reading exercises:
      - Draft German text (250-350 words).
-     - Generate `tokensJson` matching the `AnnotatedText` schema (passed as raw JSON object).
+     - Generate `tokensJson` matching the sequential token schema: `{ "tokens": [ { "t": string, "type": string, "lemma": string, "sepId": number } ] }`. Do NOT calculate character offsets/spans yourself.
      - Generate exactly 10 questions of increasing difficulty (1 to 10) testing comprehension and grammar.
      - Pass the questions as a raw JSON array/object to `questionsJson` of `upsert_reading_practice`. Do not stringify it.
 5. **Speaking Assessment & Exercise Generation**:
-   - When generating speaking exercises, generate `targetTokensJson` matching the `AnnotatedText` schema for `targetText` (pass as raw JSON object).
+   - When generating speaking exercises, generate `targetTokensJson` matching the sequential token schema: `{ "tokens": [ { "t": string, "type": string, "lemma": string, "sepId": number } ] }` for `targetText` (pass as raw JSON object). Do NOT calculate character offsets/spans yourself.
    - Query `list_speaking_practice` where `status = "pending_assessment"`.
    - Retrieve user audio, transcribe it, analyze pronunciation accuracy, and correct grammar.
    - Save results with grammar and pronunciation feedback in English (`grammarFeedback`, `pronunciationFeedback`) and Vietnamese (`grammarFeedback_vn`, `pronunciationFeedback_vn`).
