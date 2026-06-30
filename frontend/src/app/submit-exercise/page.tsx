@@ -9,6 +9,23 @@ const SAMPLES = {
   "level": "B1",
   "topic": "Patientenaufnahme im Krankenhaus",
   "germanText": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrankungen und aktuelle Symptome genau zu dokumentieren.",
+  "tokensJson": {
+    "text": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrankungen und aktuelle Symptome genau zu dokumentieren.",
+    "tokens": [
+      { "index": 0, "spans": [[0, 4]], "type": "word", "lemma": "bei" },
+      { "index": 1, "spans": [[4, 5]], "type": "space" },
+      { "index": 2, "spans": [[5, 8]], "type": "word", "lemma": "der" },
+      { "index": 3, "spans": [[8, 9]], "type": "space" },
+      { "index": 4, "spans": [[9, 26]], "type": "word", "lemma": "die Patientenaufnahme" },
+      { "index": 5, "spans": [[26, 27]], "type": "space" },
+      { "index": 6, "spans": [[27, 30]], "type": "verb", "lemma": "sein" },
+      { "index": 7, "spans": [[30, 31]], "type": "space" },
+      { "index": 8, "spans": [[31, 33]], "type": "word", "lemma": "es" },
+      { "index": 9, "spans": [[33, 34]], "type": "space" },
+      { "index": 10, "spans": [[34, 41]], "type": "word", "lemma": "wichtig" },
+      { "index": 11, "spans": [[41, 42]], "type": "punctuation" }
+    ]
+  },
   "audioFileId": "example_audio_id",
   "questionsJson": [{"id":1,"type":"single_selection","question":"Was ist bei der Aufnahme wichtig?","options":["Dokumentation der Symptome","Nichts","Kaffee trinken"],"correct_answer":"Dokumentation der Symptome","difficulty":1,"explanation":"Documentation is key.","explanation_vn":"Ghi chép bệnh án là quan trọng nhất."}]
 }`,
@@ -22,7 +39,21 @@ const SAMPLES = {
   "profession": "nurse",
   "level": "B1",
   "topic": "Beantwortung eines Patientenrufs",
-  "targetText": "Guten Tag, Herr Müller. Wie kann ich Ihnen heute helfen? Haben Sie Schmerzen?",
+  "targetText": "Guten Tag, Herr Müller.",
+  "targetTokensJson": {
+    "text": "Guten Tag, Herr Müller.",
+    "tokens": [
+      { "index": 0, "spans": [[0, 5]], "type": "word", "lemma": "gut" },
+      { "index": 1, "spans": [[5, 6]], "type": "space" },
+      { "index": 2, "spans": [[6, 9]], "type": "word", "lemma": "der Tag" },
+      { "index": 3, "spans": [[9, 10]], "type": "punctuation" },
+      { "index": 4, "spans": [[10, 11]], "type": "space" },
+      { "index": 5, "spans": [[11, 15]], "type": "word", "lemma": "Herr" },
+      { "index": 6, "spans": [[15, 16]], "type": "space" },
+      { "index": 7, "spans": [[16, 22]], "type": "name" },
+      { "index": 8, "spans": [[22, 23]], "type": "punctuation" }
+    ]
+  },
   "targetAudioFileId": "tts_audio_id"
 }`,
   grammar: `{
@@ -110,7 +141,13 @@ export default function SubmitExercisePage() {
       return;
     }
     if (parsed.questionsJson) {
-      parsed.questionsJson = JSON.stringify(parsed.questionsJson)
+      parsed.questionsJson = JSON.stringify(parsed.questionsJson);
+    }
+    if (parsed.tokensJson && typeof parsed.tokensJson !== 'string') {
+      parsed.tokensJson = JSON.stringify(parsed.tokensJson);
+    }
+    if (parsed.targetTokensJson && typeof parsed.targetTokensJson !== 'string') {
+      parsed.targetTokensJson = JSON.stringify(parsed.targetTokensJson);
     }
 
     setSubmitting(true);
@@ -139,16 +176,48 @@ Provide the output as a single, valid JSON object matching this schema:
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
-  "germanText": "[A German reading passage of 250-350 words based on the researched news, structured in at least 2 paragraphs. You may use markdown (such as bolding key terms, headers, or bullet lists) inside this string to structure the text and make it easier to read when required]",
+  "germanText": "[A German reading passage of 250-350 words based on the researched news, structured in at least 2 paragraphs.]",
+  "tokensJson": {
+    "text": "[Exact copy of the germanText string]",
+    "tokens": [
+      {
+        "index": 0,
+        "spans": [[0, 4]],
+        "type": "word",
+        "lemma": "bei"
+      },
+      ...
+    ]
+  },
   "audioFileId": "",
-  "questionsJson": [A JSON array containing exactly 10 comprehension and grammar questions of increasing difficulty (1 to 10) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]
+  "questionsJson": [
+    {
+      "id": 1,
+      "type": "single_selection",
+      "question": "question text in German",
+      "options": ["Option A", "Option B", ...],
+      "correct_answer": "Option A",
+      "difficulty": 1,
+      "explanation": "English explanation",
+      "explanation_vn": "Vietnamese explanation"
+    },
+    ...
+  ]
 }
 
+Tokenization Rules:
+1. Every character in the germanText (including spaces and punctuation) must be covered by exactly one token.
+2. Spans are [start, end) character offsets.
+3. For separable verbs, use type "separable", lemma as infinitive (e.g. "abholen"), and spans as exactly two ranges: [[stem_start, stem_end], [prefix_start, prefix_end]].
+4. For proper names (like people, places, brands), use type "name" and omit the lemma. Proper names are non-interactive.
+5. Nouns must include definite article (der/die/das) in the lemma (e.g., "die Patientenaufnahme" instead of "Patientenaufnahme").
+6. Verbs must use bare infinitive (e.g. "sein" instead of "ist"). Adjectives must be uninflected base form (e.g. "wichtig").
+
 CRITICAL: 
-1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. "id": 1).
+1. Both tokensJson and questionsJson must be raw JSON objects/arrays (not stringified or escaped). We stringify them later.
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 3. The "topic" field value MUST be written in German.
-4. The "germanText" must be at least 2 paragraphs long, can use markdown formatting where appropriate, and MUST be strictly based on current news facts related to this topic.`;
+4. The "germanText" must be at least 2 paragraphs long and MUST be strictly based on current news facts related to this topic.`;
     }
 
     if (type === 'writing') {
@@ -160,7 +229,7 @@ Provide the output as a single, valid JSON object matching this schema:
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
-  "description": "[A detailed description and instructions in English guiding the user on what to write in German, specifying grammar/lexical goals]"
+  "description": "[A detailed description and instructions in English guiding the user on what to write in German, specifying grammar/lexical goals]",
   "description_vn": "[A detailed description and instructions in Vietnamese guiding the user on what to write in German, specifying grammar/lexical goals]"
 }
 
@@ -177,10 +246,32 @@ Provide the output as a single, valid JSON object matching this schema:
   "level": "${promptLevel}",
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "targetText": "[A natural German sentence or short paragraph representing a speaking or dialogue prompt for the user to read out loud]",
+  "targetTokensJson": {
+    "text": "[Exact copy of the targetText string]",
+    "tokens": [
+      {
+        "index": 0,
+        "spans": [[0, 5]],
+        "type": "word",
+        "lemma": "gut"
+      },
+      ...
+    ]
+  },
   "targetAudioFileId": ""
 }
 
-CRITICAL: The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.`;
+Tokenization Rules:
+1. Every character in the targetText (including spaces and punctuation) must be covered by exactly one token.
+2. Spans are [start, end) character offsets.
+3. For separable verbs, use type "separable", lemma as infinitive (e.g. "abholen"), and spans as exactly two ranges: [[stem_start, stem_end], [prefix_start, prefix_end]].
+4. For proper names, use type "name" and omit the lemma. Proper names are non-interactive.
+5. Nouns must include definite article (der/die/das) in the lemma (e.g. "der Tag").
+6. Verbs must use bare infinitive. Adjectives must be uninflected base form.
+
+CRITICAL: 
+1. The targetTokensJson must be a raw JSON object (not stringified or escaped). We stringify it later.
+2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.`;
     }
 
     // grammar
@@ -194,11 +285,24 @@ Provide the output as a single, valid JSON object matching this schema:
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "description": "[Short grammar guidelines/explanation in English]",
   "description_vn": "[Short grammar guidelines/explanation in Vietnamese]",
-  "questionsJson": [A JSON array containing exactly 15 grammar questions of increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc. Each question object matches: {"id": number, "type": "single_selection" | "multi_selection" | "yes_no" | "fill_in_gap", "question": string, "question_vn": string, "options": string[], "correct_answer": string | string[], "difficulty": number, "explanation": string, "explanation_vn": string}]
+  "questionsJson": [
+    {
+      "id": 1,
+      "type": "fill_in_gap",
+      "question": "The question in German. For 'fill_in_gap', use '____' for the missing grammar element (e.g., article, ending, preposition). Do NOT include options in brackets in the question string.",
+      "question_vn": "The question in Vietnamese for the English parts.",
+      "options": ["Option A", "Option B", ...],
+      "correct_answer": "Option A",
+      "difficulty": 1,
+      "explanation": "Brief explanation of the grammatical rule in English",
+      "explanation_vn": "Brief explanation of the grammatical rule in Vietnamese"
+    },
+    ...
+  ]
 }
 
 CRITICAL: 
-1. The questionsJson must be a string containing a valid JSON array, so double quotes inside questionsJson MUST be correctly escaped (e.g. "id": 1).
+1. The questionsJson must be a raw JSON array of objects (not stringified or escaped). We stringify it later.
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 3. The "topic" field value MUST be written in German.
 4. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.

@@ -105,6 +105,10 @@ const tablesToCreate = [
           { id: 'tips_vn', fields: { type: 'Text', label: 'Tips (VN)' } },
           { id: 'caution', fields: { type: 'Text', label: 'Caution' } },
           { id: 'caution_vn', fields: { type: 'Text', label: 'Caution (VN)' } },
+          { id: 'dailyUseTokensJson', fields: { type: 'Text', label: 'Daily Use Tokens JSON' } },
+          { id: 'dailyUseTokensJson_vn', fields: { type: 'Text', label: 'Daily Use Tokens JSON (VN)' } },
+          { id: 'professionalUseTokensJson', fields: { type: 'Text', label: 'Professional Use Tokens JSON' } },
+          { id: 'professionalUseTokensJson_vn', fields: { type: 'Text', label: 'Professional Use Tokens JSON (VN)' } },
           { id: 'updatedAt', fields: { type: 'DateTime', label: 'Updated At' } },
         ],
       },
@@ -150,6 +154,7 @@ const tablesToCreate = [
         columns: [
           { id: 'topic', fields: { type: 'Text', label: 'Topic' } },
           { id: 'germanText', fields: { type: 'Text', label: 'German Text' } },
+          { id: 'tokensJson', fields: { type: 'Text', label: 'Tokens JSON' } },
           { id: 'audioFileId', fields: { type: 'Text', label: 'Audio File ID' } },
           { id: 'questionsJson', fields: { type: 'Text', label: 'Questions JSON' } },
           { id: 'userAnswersJson', fields: { type: 'Text', label: 'User Answers JSON' } },
@@ -168,6 +173,7 @@ const tablesToCreate = [
         columns: [
           { id: 'topic', fields: { type: 'Text', label: 'Topic' } },
           { id: 'targetText', fields: { type: 'Text', label: 'Target Text' } },
+          { id: 'targetTokensJson', fields: { type: 'Text', label: 'Target Tokens JSON' } },
           { id: 'userAudioFileId', fields: { type: 'Text', label: 'User Audio File ID' } },
           { id: 'transcript', fields: { type: 'Text', label: 'Transcript' } },
           { id: 'grammarFeedback', fields: { type: 'Text', label: 'Grammar Feedback' } },

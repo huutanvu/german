@@ -26,3 +26,19 @@ When a speaking practice record is in `pending_assessment` status:
    - `targetAudioFileId`: Publitio file ID of the generated TTS reference audio
    - `score`: Score out of 100
    - `status`: `assessed`
+
+## 3. Speaking Exercise Generation Workflow
+When creating a new speaking exercise:
+1. Formulate the `targetText` (raw German text).
+2. Generate the tokenization structure `targetTokensJson` matching the `AnnotatedText` schema:
+   - `text`: Exact target text.
+   - `tokens`: Array of objects:
+     - `index`: 0-based sequential index.
+     - `spans`: Array of `[start, end)` character offsets (inclusive start, exclusive end). For separable verbs, use exactly 2 spans: `[stem_span, prefix_span]`. For all other tokens, use exactly 1 span.
+     - `type`: `"word" | "verb" | "separable" | "name" | "space" | "punctuation"`.
+     - `lemma` (omitted for name, space, and punctuation): Nouns must include definite article (e.g., "der Hund"), verbs must be bare infinitive (e.g., "abholen"), adjectives must be uninflected base form (e.g., "schnell").
+3. Create a speaking practice entry in Grist using the `upsert_speaking_practice` tool with:
+   - `topic`: Descriptive topic title
+   - `targetText`: The German reference text
+   - `targetTokensJson`: JSON object matching the `AnnotatedText` schema above (do not stringify, pass as a raw JSON object)
+   - `status`: `pending_recording`

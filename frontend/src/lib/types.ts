@@ -34,6 +34,10 @@ export interface VocabularyFields {
   tips_vn?: string;
   caution: string;
   caution_vn?: string;
+  dailyUseTokensJson?: string;
+  dailyUseTokensJson_vn?: string;
+  professionalUseTokensJson?: string;
+  professionalUseTokensJson_vn?: string;
   context?: string;
   isProcessed?: boolean;
   updatedAt?: string;
@@ -59,6 +63,7 @@ export interface WritingPracticeFields {
   level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   userParagraph: string;
   correctedParagraph: string;
+  correctedTokensJson?: string;
   correctionsJson: string;
   correctionsJson_vn: string;
   status: 'pending_user' | 'pending_correction' | 'corrected';
@@ -69,6 +74,7 @@ export interface WritingPracticeFields {
 export interface ReadingPracticeFields {
   topic: string;
   germanText: string;
+  tokensJson?: string;
   audioFileId: string; // Publitio file ID
   questionsJson: string; // JSON array of questions
   profession?: string;
@@ -99,6 +105,7 @@ export interface GrammarPracticeFields {
 export interface SpeakingPracticeFields {
   topic: string;
   targetText: string;
+  targetTokensJson?: string;
   targetAudioFileId: string; // Publitio file ID of TTS
   profession?: string;
   level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
@@ -130,6 +137,7 @@ export interface WritingPracticeSubmissionFields {
   userId: string;
   userParagraph: string;
   correctedParagraph: string;
+  correctedTokensJson?: string;
   correctionsJson: string;
   correctionsJson_vn?: string;
   status: 'pending_user' | 'pending_correction' | 'corrected';

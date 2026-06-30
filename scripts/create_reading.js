@@ -74,7 +74,14 @@ Create a new German reading practice for level ${level} on the topic "${currentT
 The response must be a JSON object with:
 1. "topic": "A short, engaging title in German, e.g., 'Die Kunst des Code-Reviews' or similar"
 2. "germanText": "An adapted German text of exactly 250-350 words. The language must be natural, CEFR level ${level}, focusing on the topic ${currentTopic} in a professional software engineering environment. Use bold markdown (**word**) for 4-5 interesting key vocabulary terms inside the text."
-3. "questions": A JSON array of exactly 10 comprehension questions in German. The difficulties must be increasing from 1 to 10.
+3. "tokens": A JSON array of token objects covering the entire "germanText" string without gaps, matching this schema:
+   {
+     "index": number (0-based sequential index),
+     "spans": [[start, end], ...] (character offsets; for separable verbs, use exactly 2 spans [stem_span, prefix_span], for all other tokens use exactly 1 span),
+     "type": "word" | "verb" | "separable" | "name" | "space" | "punctuation",
+     "lemma": "canonical dictionary form of the token" (omitted for name, space, and punctuation. Nouns must include their definite article, e.g. "der Hund"; verbs must be bare infinitive, e.g. "abholen"; adjectives uninflected base form, e.g. "schnell")
+   }
+4. "questions": A JSON array of exactly 10 comprehension questions in German. The difficulties must be increasing from 1 to 10.
    Each question in the array must be an object with this schema:
    {
      "id": number (1 to 10),
@@ -91,6 +98,7 @@ Response format: ONLY return the JSON object matching this schema. No markdown f
 {
   "topic": "...",
   "germanText": "...",
+  "tokens": [...],
   "questions": [...]
 }`;
 
@@ -120,6 +128,10 @@ Response format: ONLY return the JSON object matching this schema. No markdown f
           require: { topic: parsed.topic },
           fields: {
             germanText: parsed.germanText,
+            tokensJson: JSON.stringify({
+              text: parsed.germanText,
+              tokens: parsed.tokens
+            }),
             questionsJson: JSON.stringify(parsed.questions),
             status: "pending_user",
             date: today,

@@ -40,23 +40,37 @@ export function registerVocabularyTools(server: McpServer) {
     {
       word: z.string().describe('German word or phrase'),
       meanings: z.string().describe('English translations/meanings'),
+      meanings_vn: z.string().optional().describe('Vietnamese translations/meanings'),
       level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
       type: z.enum(['new', 'revised', 'permanent', 'complicated']).default('new'),
       grammar: z.string().describe('Article, plural form (nouns), aux + past participle (verbs), etc.'),
+      grammar_vn: z.string().optional().describe('Grammatical notes in Vietnamese'),
       dailyUse: z.string().describe('Example sentence in daily life'),
+      dailyUse_vn: z.string().optional().describe('Daily example sentence in Vietnamese'),
       professionalUse: z.string().describe('Example sentence in professional environment'),
+      professionalUse_vn: z.string().optional().describe('Professional example sentence in Vietnamese'),
       tips: z.string().describe('Grammatical cases, prepositions, tips'),
+      tips_vn: z.string().optional().describe('Tips in Vietnamese'),
       caution: z.string().describe('Pitfalls, false friends, common errors'),
+      caution_vn: z.string().optional().describe('Cautions in Vietnamese'),
+      dailyUseTokensJson: z.any().optional(),
+      dailyUseTokensJson_vn: z.any().optional(),
+      professionalUseTokensJson: z.any().optional(),
+      professionalUseTokensJson_vn: z.any().optional(),
       context: z.string().optional().describe('Sentence context where this word was captured'),
       isProcessed: z.boolean().optional().describe('True if this word is fully filled out, false if waiting in queue'),
       userId: z.string().optional().describe('User ID for multi-user support'),
     },
-    async (fields) => {
+    async ({ dailyUseTokensJson, dailyUseTokensJson_vn, professionalUseTokensJson, professionalUseTokensJson_vn, ...fields }) => {
       const result = await gristPost('/tables/Vocabulary/records', {
         records: [
           {
             fields: {
               ...fields,
+              dailyUseTokensJson: dailyUseTokensJson ? (typeof dailyUseTokensJson === 'string' ? dailyUseTokensJson : JSON.stringify(dailyUseTokensJson)) : undefined,
+              dailyUseTokensJson_vn: dailyUseTokensJson_vn ? (typeof dailyUseTokensJson_vn === 'string' ? dailyUseTokensJson_vn : JSON.stringify(dailyUseTokensJson_vn)) : undefined,
+              professionalUseTokensJson: professionalUseTokensJson ? (typeof professionalUseTokensJson === 'string' ? professionalUseTokensJson : JSON.stringify(professionalUseTokensJson)) : undefined,
+              professionalUseTokensJson_vn: professionalUseTokensJson_vn ? (typeof professionalUseTokensJson_vn === 'string' ? professionalUseTokensJson_vn : JSON.stringify(professionalUseTokensJson_vn)) : undefined,
               isProcessed: fields.isProcessed ?? (!!fields.meanings),
               correctCount: 0,
               updatedAt: new Date().toISOString(),
@@ -83,17 +97,31 @@ export function registerVocabularyTools(server: McpServer) {
       type: z.enum(['new', 'revised', 'permanent', 'complicated']).optional(),
       correctCount: z.number().optional(),
       meanings: z.string().optional(),
+      meanings_vn: z.string().optional(),
       grammar: z.string().optional(),
+      grammar_vn: z.string().optional(),
       dailyUse: z.string().optional(),
+      dailyUse_vn: z.string().optional(),
       professionalUse: z.string().optional(),
+      professionalUse_vn: z.string().optional(),
       tips: z.string().optional(),
+      tips_vn: z.string().optional(),
       caution: z.string().optional(),
+      caution_vn: z.string().optional(),
+      dailyUseTokensJson: z.any().optional(),
+      dailyUseTokensJson_vn: z.any().optional(),
+      professionalUseTokensJson: z.any().optional(),
+      professionalUseTokensJson_vn: z.any().optional(),
       context: z.string().optional(),
       isProcessed: z.boolean().optional(),
     },
-    async ({ id, ...fields }) => {
+    async ({ id, dailyUseTokensJson, dailyUseTokensJson_vn, professionalUseTokensJson, professionalUseTokensJson_vn, ...fields }) => {
       const patchFields: Partial<VocabularyFields> = {
         ...fields,
+        dailyUseTokensJson: dailyUseTokensJson ? (typeof dailyUseTokensJson === 'string' ? dailyUseTokensJson : JSON.stringify(dailyUseTokensJson)) : undefined,
+        dailyUseTokensJson_vn: dailyUseTokensJson_vn ? (typeof dailyUseTokensJson_vn === 'string' ? dailyUseTokensJson_vn : JSON.stringify(dailyUseTokensJson_vn)) : undefined,
+        professionalUseTokensJson: professionalUseTokensJson ? (typeof professionalUseTokensJson === 'string' ? professionalUseTokensJson : JSON.stringify(professionalUseTokensJson)) : undefined,
+        professionalUseTokensJson_vn: professionalUseTokensJson_vn ? (typeof professionalUseTokensJson_vn === 'string' ? professionalUseTokensJson_vn : JSON.stringify(professionalUseTokensJson_vn)) : undefined,
         updatedAt: new Date().toISOString(),
       };
 

@@ -181,7 +181,11 @@ export default function WritingDetail({ id }: { id: number }) {
                     {t("Suggested Final Version", "Bản sửa đổi đề xuất")}
                   </span>
                   <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded border border-emerald-200 dark:border-emerald-900/40 font-medium">
-                    <MarkdownDisplay content={exercise.fields.correctedParagraph} onWordLookup={handleWordLookup} />
+                    <MarkdownDisplay
+                      content={exercise.fields.correctedParagraph}
+                      tokensJson={exercise.fields.correctedTokensJson}
+                      onWordLookup={handleWordLookup}
+                    />
                   </div>
                 </div>
 

@@ -55,6 +55,7 @@ const SUBMISSION_SCHEMAS = {
     { id: "userId", fields: { label: "userId", type: "Text" } },
     { id: "userParagraph", fields: { label: "userParagraph", type: "Text" } },
     { id: "correctedParagraph", fields: { label: "correctedParagraph", type: "Text" } },
+    { id: "correctedTokensJson", fields: { label: "correctedTokensJson", type: "Text" } },
     { id: "correctionsJson", fields: { label: "correctionsJson", type: "Text" } },
     { id: "correctionsJson_vn", fields: { label: "correctionsJson_vn", type: "Text" } },
     { id: "status", fields: { label: "status", type: "Text" } },

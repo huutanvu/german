@@ -228,7 +228,11 @@ export default function ReadingDetail({ id }: { id: number }) {
 
         {/* German Text Passage */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <MarkdownDisplay content={exercise.fields.germanText} onWordLookup={handleWordLookup} />
+          <MarkdownDisplay
+            content={exercise.fields.germanText}
+            tokensJson={exercise.fields.tokensJson}
+            onWordLookup={handleWordLookup}
+          />
         </div>
 
         {/* Paginated Questions section */}

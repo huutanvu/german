@@ -18,14 +18,24 @@ export interface LearningContextFields {
 export interface VocabularyFields {
   word: string;
   meanings: string;
+  meanings_vn?: string;
   level: string;
   type: string;
   correctCount: number;
   grammar: string;
+  grammar_vn?: string;
   dailyUse: string;
+  dailyUse_vn?: string;
   professionalUse: string;
+  professionalUse_vn?: string;
   tips: string;
+  tips_vn?: string;
   caution: string;
+  caution_vn?: string;
+  dailyUseTokensJson?: string;
+  dailyUseTokensJson_vn?: string;
+  professionalUseTokensJson?: string;
+  professionalUseTokensJson_vn?: string;
   context?: string;
   isProcessed?: boolean;
   updatedAt?: string;
@@ -53,6 +63,7 @@ export interface WritingPracticeFields {
 export interface ReadingPracticeFields {
   topic: string;
   germanText: string;
+  tokensJson?: string;
   audioFileId: string;
   questionsJson: string;
   profession?: string;
@@ -62,6 +73,7 @@ export interface ReadingPracticeFields {
 export interface SpeakingPracticeFields {
   topic: string;
   targetText: string;
+  targetTokensJson?: string;
   targetAudioFileId: string;
   profession?: string;
   level?: string;
@@ -91,6 +103,7 @@ export interface WritingPracticeSubmissionFields {
   userId: string;
   userParagraph: string;
   correctedParagraph: string;
+  correctedTokensJson?: string;
   correctionsJson: string;
   correctionsJson_vn?: string;
   status: string;

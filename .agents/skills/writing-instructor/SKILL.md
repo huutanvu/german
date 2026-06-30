@@ -21,7 +21,15 @@ Use this skill when preparing writing practice topics or correcting user paragra
 When a writing practice is in `pending_correction` status:
 1. Retrieve the paragraph written by the user.
 2. Perform a detailed sentence-by-sentence analysis of errors (Grammar, Orthography, Lexicon).
-3. Save the corrections to Grist using `upsert_writing_practice`:
+3. Generate a tokenization structure `correctedTokensJson` for the `correctedParagraph` matching the `AnnotatedText` schema:
+   - `text`: Exact corrected paragraph text.
+   - `tokens`: Array of objects:
+     - `index`: 0-based sequential index.
+     - `spans`: Array of `[start, end)` character offsets (inclusive start, exclusive end). For separable verbs, use exactly 2 spans: `[stem_span, prefix_span]`. For all other tokens, use exactly 1 span.
+     - `type`: `"word" | "verb" | "separable" | "name" | "space" | "punctuation"`.
+     - `lemma` (omitted for name, space, and punctuation): Nouns must include definite article (e.g., "der Hund"), verbs must be bare infinitive (e.g., "abholen"), adjectives must be uninflected base form (e.g., "schnell").
+4. Save the corrections to Grist using `upsert_writing_practice`:
    - `correctedParagraph`: Full corrected paragraph
-   - `correctionsJson`: Structured JSON array of corrections for each sentence
+   - `correctedTokensJson`: JSON object matching the `AnnotatedText` schema above (do not stringify, pass as a raw JSON object)
+   - `correctionsJson`: Structured JSON array of corrections for each sentence (do not stringify, pass as a raw JSON object/array)
    - `status`: `corrected`

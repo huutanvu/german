@@ -114,6 +114,7 @@ export function registerExerciseTools(server: McpServer) {
           level: r.fields.level ?? 'B1',
           userParagraph: sub?.userParagraph ?? '',
           correctedParagraph: sub?.correctedParagraph ?? '',
+          correctedTokensJson: sub?.correctedTokensJson ?? '',
           correctionsJson: sub?.correctionsJson ?? '',
           correctionsJson_vn: sub?.correctionsJson_vn ?? '',
           status: sub?.status ?? 'pending_user',
@@ -144,13 +145,14 @@ export function registerExerciseTools(server: McpServer) {
       description: z.string().optional(),
       userParagraph: z.string().optional(),
       correctedParagraph: z.string().optional(),
+      correctedTokensJson: z.any().optional(),
       correctionsJson: z.string().optional(),
       correctionsJson_vn: z.string().optional(),
       status: z.enum(['pending_user', 'pending_correction', 'corrected']).optional(),
       date: z.string().optional(),
       userId: z.string().optional(),
     },
-    async ({ id, topic, description, userId, ...fields }) => {
+    async ({ id, topic, description, userId, correctedTokensJson, ...fields }) => {
       const userProfession = await getProfileProfession(userId);
 
       // Case A: Creating/updating a global template (no userParagraph provided)
@@ -194,6 +196,7 @@ export function registerExerciseTools(server: McpServer) {
             require: { practiceId, userId },
             fields: {
               ...fields,
+              correctedTokensJson: correctedTokensJson ? (typeof correctedTokensJson === 'string' ? correctedTokensJson : JSON.stringify(correctedTokensJson)) : undefined,
               practiceId,
               userId,
               date: fields.date || new Date().toISOString().split('T')[0],
@@ -246,6 +249,7 @@ export function registerExerciseTools(server: McpServer) {
           id: r.id,
           topic: r.fields.topic,
           germanText: r.fields.germanText,
+          tokensJson: r.fields.tokensJson ?? '',
           audioFileId: r.fields.audioFileId,
           questionsJson: r.fields.questionsJson,
           profession: r.fields.profession,
@@ -279,8 +283,9 @@ export function registerExerciseTools(server: McpServer) {
       id: z.number().optional(),
       topic: z.string().optional(),
       germanText: z.string().optional(),
+      tokensJson: z.any().optional(),
       audioFileId: z.string().optional(),
-      questionsJson: z.string().optional(),
+      questionsJson: z.any().optional(),
       userAnswersJson: z.string().optional(),
       correctionsJson: z.string().optional(),
       correctionsJson_vn: z.string().optional(),
@@ -288,7 +293,7 @@ export function registerExerciseTools(server: McpServer) {
       date: z.string().optional(),
       userId: z.string().optional(),
     },
-    async ({ id, topic, germanText, audioFileId, questionsJson, userId, ...fields }) => {
+    async ({ id, topic, germanText, tokensJson, audioFileId, questionsJson, userId, ...fields }) => {
       const userProfession = await getProfileProfession(userId);
 
       // Case A: Create/update template
@@ -300,8 +305,9 @@ export function registerExerciseTools(server: McpServer) {
               fields: {
                 topic: topic || '',
                 germanText,
+                tokensJson: tokensJson ? (typeof tokensJson === 'string' ? tokensJson : JSON.stringify(tokensJson)) : undefined,
                 audioFileId: audioFileId || '',
-                questionsJson: questionsJson || '[]',
+                questionsJson: questionsJson ? (typeof questionsJson === 'string' ? questionsJson : JSON.stringify(questionsJson)) : '[]',
                 profession: userProfession,
               },
             },
@@ -386,6 +392,7 @@ export function registerExerciseTools(server: McpServer) {
           id: r.id,
           topic: r.fields.topic,
           targetText: r.fields.targetText,
+          targetTokensJson: r.fields.targetTokensJson ?? '',
           targetAudioFileId: r.fields.targetAudioFileId,
           profession: r.fields.profession,
           level: r.fields.level ?? 'B1',
@@ -422,6 +429,7 @@ export function registerExerciseTools(server: McpServer) {
       id: z.number().optional(),
       topic: z.string().optional(),
       targetText: z.string().optional(),
+      targetTokensJson: z.any().optional(),
       userAudioFileId: z.string().optional(),
       transcript: z.string().optional(),
       grammarFeedback: z.string().optional(),
@@ -434,7 +442,7 @@ export function registerExerciseTools(server: McpServer) {
       date: z.string().optional(),
       userId: z.string().optional(),
     },
-    async ({ id, topic, targetText, targetAudioFileId, userId, ...fields }) => {
+    async ({ id, topic, targetText, targetTokensJson, targetAudioFileId, userId, ...fields }) => {
       const userProfession = await getProfileProfession(userId);
 
       // Case A: Create/update template
@@ -446,6 +454,7 @@ export function registerExerciseTools(server: McpServer) {
               fields: {
                 topic: topic || '',
                 targetText,
+                targetTokensJson: targetTokensJson ? (typeof targetTokensJson === 'string' ? targetTokensJson : JSON.stringify(targetTokensJson)) : undefined,
                 targetAudioFileId: targetAudioFileId || '',
                 profession: userProfession,
               },

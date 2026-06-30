@@ -270,7 +270,11 @@ export default function SpeakingDetail({ id }: { id: number }) {
           <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-2">
             {t("Target Reading Text", "Đoạn văn đọc mục tiêu")}
           </span>
-          <MarkdownDisplay content={exercise.fields.targetText} onWordLookup={handleWordLookup} />
+          <MarkdownDisplay
+            content={exercise.fields.targetText}
+            tokensJson={exercise.fields.targetTokensJson}
+            onWordLookup={handleWordLookup}
+          />
         </div>
 
         {/* Recorder or displays depending on status */}
