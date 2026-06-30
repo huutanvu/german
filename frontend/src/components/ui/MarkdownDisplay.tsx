@@ -318,10 +318,12 @@ function TokenWordSpan({
           onMouseLeave={() => onHoverToken(null)}
           className={[
             "cursor-pointer rounded px-0.5 transition-colors duration-150 border-b border-dotted border-gray-400 dark:border-slate-500",
+            token.bold ? "font-bold text-blue-600 dark:text-blue-400" : "",
+            token.italic ? "italic" : "",
             isHighlighted
               ? "bg-yellow-200 dark:bg-yellow-700/60 text-yellow-900 dark:text-yellow-100"
               : "hover:bg-blue-100 hover:text-blue-900 dark:hover:bg-blue-950/40 dark:hover:text-blue-200",
-          ].join(" ")}
+          ].filter(Boolean).join(" ")}
           title="Click to lookup"
         >
           {text}
