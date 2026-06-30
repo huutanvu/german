@@ -8,22 +8,21 @@ const SAMPLES = {
   "profession": "nurse",
   "level": "B1",
   "topic": "Patientenaufnahme im Krankenhaus",
-  "germanText": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrankungen und aktuelle Symptome genau zu dokumentieren.",
+  "germanText": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrangungen und aktuelle Symptome genau zu dokumentieren.",
   "tokensJson": {
-    "text": "Bei der Patientenaufnahme ist es wichtig, alle relevanten Informationen wie Vorerkrankungen und aktuelle Symptome genau zu dokumentieren.",
     "tokens": [
-      { "index": 0, "spans": [[0, 4]], "type": "word", "lemma": "bei" },
-      { "index": 1, "spans": [[4, 5]], "type": "space" },
-      { "index": 2, "spans": [[5, 8]], "type": "word", "lemma": "der" },
-      { "index": 3, "spans": [[8, 9]], "type": "space" },
-      { "index": 4, "spans": [[9, 26]], "type": "word", "lemma": "die Patientenaufnahme" },
-      { "index": 5, "spans": [[26, 27]], "type": "space" },
-      { "index": 6, "spans": [[27, 30]], "type": "verb", "lemma": "sein" },
-      { "index": 7, "spans": [[30, 31]], "type": "space" },
-      { "index": 8, "spans": [[31, 33]], "type": "word", "lemma": "es" },
-      { "index": 9, "spans": [[33, 34]], "type": "space" },
-      { "index": 10, "spans": [[34, 41]], "type": "word", "lemma": "wichtig" },
-      { "index": 11, "spans": [[41, 42]], "type": "punctuation" }
+      { "t": "Bei", "type": "word", "lemma": "bei" },
+      { "t": " " },
+      { "t": "der", "type": "word", "lemma": "der" },
+      { "t": " " },
+      { "t": "Patientenaufnahme", "type": "word", "lemma": "die Patientenaufnahme" },
+      { "t": " " },
+      { "t": "ist", "type": "verb", "lemma": "sein" },
+      { "t": " " },
+      { "t": "es", "type": "word", "lemma": "es" },
+      { "t": " " },
+      { "t": "wichtig", "type": "word", "lemma": "wichtig" },
+      { "t": "," }
     ]
   },
   "audioFileId": "example_audio_id",
@@ -41,17 +40,16 @@ const SAMPLES = {
   "topic": "Beantwortung eines Patientenrufs",
   "targetText": "Guten Tag, Herr Müller.",
   "targetTokensJson": {
-    "text": "Guten Tag, Herr Müller.",
     "tokens": [
-      { "index": 0, "spans": [[0, 5]], "type": "word", "lemma": "gut" },
-      { "index": 1, "spans": [[5, 6]], "type": "space" },
-      { "index": 2, "spans": [[6, 9]], "type": "word", "lemma": "der Tag" },
-      { "index": 3, "spans": [[9, 10]], "type": "punctuation" },
-      { "index": 4, "spans": [[10, 11]], "type": "space" },
-      { "index": 5, "spans": [[11, 15]], "type": "word", "lemma": "Herr" },
-      { "index": 6, "spans": [[15, 16]], "type": "space" },
-      { "index": 7, "spans": [[16, 22]], "type": "name" },
-      { "index": 8, "spans": [[22, 23]], "type": "punctuation" }
+      { "t": "Guten", "type": "word", "lemma": "gut" },
+      { "t": " " },
+      { "t": "Tag", "type": "word", "lemma": "der Tag" },
+      { "t": "," },
+      { "t": " " },
+      { "t": "Herr", "type": "word", "lemma": "Herr" },
+      { "t": " " },
+      { "t": "Müller", "type": "name" },
+      { "t": "." }
     ]
   },
   "targetAudioFileId": "tts_audio_id"
@@ -331,14 +329,18 @@ Provide the output as a single, valid JSON object matching this schema:
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "germanText": "[A German reading passage of 250-350 words based on the researched news, structured in at least 2 paragraphs.]",
   "tokensJson": {
-    "text": "[Exact copy of the germanText string]",
     "tokens": [
-      {
-        "index": 0,
-        "spans": [[0, 4]],
-        "type": "word",
-        "lemma": "bei"
-      },
+      { "t": "Bei", "type": "word", "lemma": "bei" },
+      { "t": " " },
+      { "t": "der", "type": "word", "lemma": "der" },
+      { "t": "Patientenaufnahme", "type": "word", "lemma": "die Patientenaufnahme" },
+      { "t": " " },
+      { "t": "ist", "type": "verb", "lemma": "sein" },
+      { "t": " " },
+      { "t": "es", "type": "word", "lemma": "es" },
+      { "t": " " },
+      { "t": "wichtig", "type": "word", "lemma": "wichtig" },
+      { "t": "," },
       ...
     ]
   },
@@ -359,35 +361,35 @@ Provide the output as a single, valid JSON object matching this schema:
 }
 
 Tokenization Rules:
-1. Every character in the germanText (including spaces and punctuation) must be covered by exactly one token.
-2. Spans are [start, end) character offsets.
-3. For separable verbs, use type "separable", lemma as infinitive (e.g. "abholen"), and spans as exactly two ranges: [[stem_start, stem_end], [prefix_start, prefix_end]].
-4. For proper names (like people, places, brands), use type "name" and omit the lemma. Proper names are non-interactive.
-5. Nouns must include definite article (der/die/das) in the lemma (e.g., "die Patientenaufnahme" instead of "Patientenaufnahme").
-6. Verbs must use bare infinitive (e.g. "sein" instead of "ist"). Adjectives must be uninflected base form (e.g. "wichtig").
+1. Every character in the germanText (including spaces and punctuation) must be represented as a token in sequence inside the "tokens" array.
+2. The "t" property must contain the exact text slice.
+3. If it is a word or verb, specify type "word" or "verb" and provide the "lemma" (nominative singular with article for nouns e.g., "die Patientenaufnahme", bare infinitive for verbs e.g., "sein", uninflected base form for adjectives/adverbs e.g., "wichtig").
+4. For proper names (people, places, brands), use type "name" and omit the lemma. Proper names are non-interactive.
+5. For space or punctuation tokens, omit the lemma and use type "space" or "punctuation".
+6. For separable verbs (e.g. "abholen" split into "hole" and "ab"), assign the same integer "sepId" to both tokens. For example, the stem token is {"t": "hole", "type": "verb", "lemma": "abholen", "sepId": 1} and the prefix token is {"t": "ab", "type": "prefix", "sepId": 1}. Do NOT calculate character offsets/spans yourself.
 
 CRITICAL Tokenization Example for Separable Verbs:
-Sentence: "Ich hole ihn ab." (Length: 16 characters)
-Offsets: I(0) c(1) h(2)  (3) h(4) o(5) l(6) e(7)  (8) i(9) h(10) n(11)  (12) a(13) b(14) .(15)
-The separable verb "abholen" consists of stem "hole" at [4, 8) and prefix "ab" at [13, 15).
+Sentence: "Ich hole ihn ab."
+The separable verb "abholen" consists of stem "hole" and prefix "ab".
 The tokens list MUST be:
 [
-  { "index": 0, "spans": [[0, 3]], "type": "word", "lemma": "ich" },
-  { "index": 1, "spans": [[3, 4]], "type": "space" },
-  { "index": 2, "spans": [[4, 8], [13, 15]], "type": "separable", "lemma": "abholen" },
-  { "index": 3, "spans": [[8, 9]], "type": "space" },
-  { "index": 4, "spans": [[9, 12]], "type": "word", "lemma": "er" },
-  { "index": 5, "spans": [[12, 13]], "type": "space" },
-  // Note: "ab" is omitted here because it is already mapped as the second span under the "separable" token at index 2!
-  { "index": 6, "spans": [[15, 16]], "type": "punctuation" }
+  { "t": "Ich", "type": "word", "lemma": "ich" },
+  { "t": " " },
+  { "t": "hole", "type": "verb", "lemma": "abholen", "sepId": 1 },
+  { "t": " " },
+  { "t": "ihn", "type": "word", "lemma": "er" },
+  { "t": " " },
+  { "t": "ab", "type": "prefix", "sepId": 1 },
+  { "t": "." }
 ]
 
 CRITICAL: 
 1. Both tokensJson and questionsJson must be raw JSON objects/arrays (not stringified or escaped). We stringify them later.
-2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
-3. The "topic" field value MUST be written in German.
-4. The "germanText" must be at least 2 paragraphs long and MUST be strictly based on current news facts related to this topic.
-5. The output must be a downloadable JSON file.`;
+2. The questionsJson array must contain exactly 10 questions of increasing difficulty (1 to 10) testing both comprehension and German grammar.
+3. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
+4. The "topic" field value MUST be written in German.
+5. The "germanText" must be at least 2 paragraphs long and MUST be strictly based on current news facts related to this topic.
+6. The output must be a downloadable JSON file.`;
     }
 
     if (type === 'writing') {
@@ -419,42 +421,42 @@ Provide the output as a single, valid JSON object matching this schema:
   "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
   "targetText": "[A natural German sentence or short paragraph representing a speaking or dialogue prompt for the user to read out loud]",
   "targetTokensJson": {
-    "text": "[Exact copy of the targetText string]",
     "tokens": [
-      {
-        "index": 0,
-        "spans": [[0, 5]],
-        "type": "word",
-        "lemma": "gut"
-      },
-      ...
+      { "t": "Guten", "type": "word", "lemma": "gut" },
+      { "t": " " },
+      { "t": "Tag", "type": "word", "lemma": "der Tag" },
+      { "t": "," },
+      { "t": " " },
+      { "t": "Herr", "type": "word", "lemma": "Herr" },
+      { "t": " " },
+      { "t": "Müller", "type": "name" },
+      { "t": "." }
     ]
   },
   "targetAudioFileId": ""
 }
 
 Tokenization Rules:
-1. Every character in the targetText (including spaces and punctuation) must be covered by exactly one token.
-2. Spans are [start, end) character offsets.
-3. For separable verbs, use type "separable", lemma as infinitive (e.g. "abholen"), and spans as exactly two ranges: [[stem_start, stem_end], [prefix_start, prefix_end]].
+1. Every character in the targetText (including spaces and punctuation) must be represented as a token in sequence inside the "tokens" array.
+2. The "t" property must contain the exact text slice.
+3. If it is a word or verb, specify type "word" or "verb" and provide the "lemma" (nominative singular with article for nouns, bare infinitive for verbs, uninflected base form for adjectives/adverbs).
 4. For proper names, use type "name" and omit the lemma. Proper names are non-interactive.
-5. Nouns must include definite article (der/die/das) in the lemma (e.g. "der Tag").
-6. Verbs must use bare infinitive. Adjectives must be uninflected base form.
+5. For space or punctuation tokens, omit the lemma and use type "space" or "punctuation".
+6. For separable verbs (e.g. "abholen" split into "hole" and "ab"), assign the same integer "sepId" to both tokens. For example, the stem token is {"t": "hole", "type": "verb", "lemma": "abholen", "sepId": 1} and the prefix token is {"t": "ab", "type": "prefix", "sepId": 1}. Do NOT calculate character offsets/spans yourself.
 
 CRITICAL Tokenization Example for Separable Verbs:
-Sentence: "Ich hole ihn ab." (Length: 16 characters)
-Offsets: I(0) c(1) h(2)  (3) h(4) o(5) l(6) e(7)  (8) i(9) h(10) n(11)  (12) a(13) b(14) .(15)
-The separable verb "abholen" consists of stem "hole" at [4, 8) and prefix "ab" at [13, 15).
+Sentence: "Ich hole ihn ab."
+The separable verb "abholen" consists of stem "hole" and prefix "ab".
 The tokens list MUST be:
 [
-  { "index": 0, "spans": [[0, 3]], "type": "word", "lemma": "ich" },
-  { "index": 1, "spans": [[3, 4]], "type": "space" },
-  { "index": 2, "spans": [[4, 8], [13, 15]], "type": "separable", "lemma": "abholen" },
-  { "index": 3, "spans": [[8, 9]], "type": "space" },
-  { "index": 4, "spans": [[9, 12]], "type": "word", "lemma": "er" },
-  { "index": 5, "spans": [[12, 13]], "type": "space" },
-  // Note: "ab" is omitted here because it is already mapped as the second span under the "separable" token at index 2!
-  { "index": 6, "spans": [[15, 16]], "type": "punctuation" }
+  { "t": "Ich", "type": "word", "lemma": "ich" },
+  { "t": " " },
+  { "t": "hole", "type": "verb", "lemma": "abholen", "sepId": 1 },
+  { "t": " " },
+  { "t": "ihn", "type": "word", "lemma": "er" },
+  { "t": " " },
+  { "t": "ab", "type": "prefix", "sepId": 1 },
+  { "t": "." }
 ]
 
 CRITICAL: 
@@ -491,8 +493,8 @@ Provide the output as a single, valid JSON object matching this schema:
 }
 
 CRITICAL: 
-1. The questionsJson array must contain at least 10 questions (up to 15 questions).
-2. The questionsJson must be a raw JSON array of objects (not stringified or escaped). We stringify it later.
+1. The questionsJson array must contain exactly 15 questions of increasing difficulty (1 to 15) testing case endings, prepositions, articles, etc.
+2. The questionsJson must be a raw JSON array of objects (not stringified or escaped). We stringify them later.
 3. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 4. The "topic" field value MUST be written in German.
 5. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.

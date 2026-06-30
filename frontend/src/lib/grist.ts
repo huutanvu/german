@@ -1183,4 +1183,29 @@ export async function addPracticeTemplate(
   });
 }
 
+export async function updatePracticeTemplate(
+  type: 'reading' | 'writing' | 'speaking' | 'grammar',
+  id: number,
+  fields: any
+): Promise<any> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (resolvedUserId !== 'd68f7a67-42fb-43b2-a1c7-1108eb99150a') {
+    throw new Error("Unauthorized access. Access restricted to administrator.");
+  }
+
+  const tableMap = {
+    reading: 'ReadingPractice',
+    writing: 'WritingPractice',
+    speaking: 'SpeakingPractice',
+    grammar: 'GrammarPractice'
+  };
+
+  const table = tableMap[type];
+  if (!table) throw new Error("Invalid practice type");
+
+  return gristWrite('PATCH', `/tables/${table}/records`, {
+    records: [{ id, fields }]
+  });
+}
+
 

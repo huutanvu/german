@@ -6,6 +6,7 @@ import { getReadingPractice, upsertReadingPractice } from "@/lib/grist";
 import type { ReadingPractice } from "@/lib/types";
 import { MarkdownDisplay } from "@/components/ui/MarkdownDisplay";
 import { WordLookupSidebar } from "@/components/ui/WordLookupSidebar";
+import { UploadAudioButton } from "@/components/ui/UploadAudioButton";
 import { useLanguage } from "@/lib/language-context";
 
 export default function ReadingDetail({ id }: { id: number }) {
@@ -17,6 +18,7 @@ export default function ReadingDetail({ id }: { id: number }) {
   const [answers, setAnswers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Word lookup states
   const [lookupWord, setLookupWord] = useState("");
@@ -24,6 +26,21 @@ export default function ReadingDetail({ id }: { id: number }) {
   const [lookupClickedWord, setLookupClickedWord] = useState("");
   const [lookupSeparablePrefix, setLookupSeparablePrefix] = useState<string | undefined>(undefined);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
+
+  useEffect(() => {
+    async function checkUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.userId === 'd68f7a67-42fb-43b2-a1c7-1108eb99150a');
+        }
+      } catch (err) {
+        console.error("Failed to check user role:", err);
+      }
+    }
+    checkUser();
+  }, []);
 
   function handleWordLookup(canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) {
     setLookupWord(canonical);
@@ -218,12 +235,19 @@ export default function ReadingDetail({ id }: { id: number }) {
           </div>
         </div>
 
-        {/* Audio Player */}
-        {audioUrl && (
+        {/* Audio Player / Upload Voice Over */}
+        {audioUrl ? (
           <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col gap-2">
             <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t("Audio Narration", "Nghe bài đọc")}</span>
             <audio controls src={audioUrl} className="w-full h-8" />
           </div>
+        ) : (
+          isAdmin && (
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t("Upload Audio Narration (Admin)", "Tải lên tệp âm thanh (Admin)")}</span>
+              <UploadAudioButton type="reading" id={id} onUploadSuccess={loadExerciseData} />
+            </div>
+          )
         )}
 
         {/* German Text Passage */}

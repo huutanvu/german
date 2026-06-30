@@ -6,6 +6,7 @@ import { getSpeakingPractice, upsertSpeakingPractice, listSpeakingPractices, cre
 import type { SpeakingPractice } from "@/lib/types";
 import { MarkdownDisplay, PlainMarkdown } from "@/components/ui/MarkdownDisplay";
 import { WordLookupSidebar } from "@/components/ui/WordLookupSidebar";
+import { UploadAudioButton } from "@/components/ui/UploadAudioButton";
 import { useLanguage } from "@/lib/language-context";
 
 export default function SpeakingDetail({ id }: { id: number }) {
@@ -19,6 +20,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
   const [submitting, setSubmitting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -29,6 +31,21 @@ export default function SpeakingDetail({ id }: { id: number }) {
   const [lookupClickedWord, setLookupClickedWord] = useState("");
   const [lookupSeparablePrefix, setLookupSeparablePrefix] = useState<string | undefined>(undefined);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
+
+  useEffect(() => {
+    async function checkUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.userId === 'd68f7a67-42fb-43b2-a1c7-1108eb99150a');
+        }
+      } catch (err) {
+        console.error("Failed to check user role:", err);
+      }
+    }
+    checkUser();
+  }, []);
 
   function handleWordLookup(canonical: string, sentence: string, clickedWord: string, separablePrefix?: string) {
     setLookupWord(canonical);
@@ -266,16 +283,33 @@ export default function SpeakingDetail({ id }: { id: number }) {
         )}
 
         {/* Target text to read */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-2">
-            {t("Target Reading Text", "Đoạn văn đọc mục tiêu")}
-          </span>
-          <MarkdownDisplay
-            content={exercise.fields.targetText}
-            tokensJson={exercise.fields.targetTokensJson || ""}
-            onWordLookup={handleWordLookup}
-            isLookupOpen={isLookupOpen}
-          />
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div>
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 block mb-2">
+              {t("Target Reading Text", "Đoạn văn đọc mục tiêu")}
+            </span>
+            <MarkdownDisplay
+              content={exercise.fields.targetText}
+              tokensJson={exercise.fields.targetTokensJson || ""}
+              onWordLookup={handleWordLookup}
+              isLookupOpen={isLookupOpen}
+            />
+          </div>
+
+          {/* Reference Audio Player / Admin Upload */}
+          {targetAudioUrl ? (
+            <div className="pt-4 border-t border-gray-100 dark:border-slate-800/60 flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t("Reference Pronunciation", "Phát âm mẫu tham khảo")}</span>
+              <audio controls src={targetAudioUrl} className="w-full h-8" />
+            </div>
+          ) : (
+            isAdmin && (
+              <div className="pt-4 border-t border-gray-100 dark:border-slate-800/60 flex flex-col gap-2">
+                <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">{t("Upload Reference Audio (Admin)", "Tải lên phát âm mẫu (Admin)")}</span>
+                <UploadAudioButton type="speaking" id={id} onUploadSuccess={loadExerciseData} />
+              </div>
+            )
+          )}
         </div>
 
         {/* Recorder or displays depending on status */}
