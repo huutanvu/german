@@ -486,7 +486,7 @@ export default function ReadingDetail({ id }: { id: number }) {
                 <h3 className="text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">
                   {t("Navigation", "Danh sách câu")}
                 </h3>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-3">
                   {questions.map((item: any, idx: number) => {
                     const ans = answers[idx];
                     const hasAnswer = Array.isArray(ans) ? ans.length > 0 : String(ans || "").trim() !== "";
