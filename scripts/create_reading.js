@@ -13,7 +13,21 @@ const getEnv = (key) => {
 const GRIST_URL = getEnv('GRIST_URL') || 'https://docs.getgrist.com/api';
 const GRIST_DOC = getEnv('GRIST_DOC');
 const GRIST_KEY = getEnv('GRIST_KEY');
-const GEMINI_API_KEY = getEnv('GEMINI_API_KEY');
+const getGeminiApiKeys = () => {
+  return [
+    getEnv('GEMINI_API_KEY'),
+    getEnv('GEMINI_API_KEY_2'),
+    getEnv('GEMINI_API_KEY_3'),
+    getEnv('GEMINI_API_KEY_4')
+  ].filter(key => !!key && key.trim() !== "");
+};
+
+const keys = getGeminiApiKeys();
+
+if (!GRIST_DOC || !GRIST_KEY || keys.length === 0) {
+  console.error('Error: Grist or Gemini credentials not found.');
+  process.exit(1);
+}
 
 const GEMINI_MODELS = [
   "gemini-3.5-flash",
@@ -23,32 +37,34 @@ const GEMINI_MODELS = [
 
 async function callGemini(body) {
   let lastError = null;
-  for (const model of GEMINI_MODELS) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+  for (const currentKey of keys) {
+    for (const model of GEMINI_MODELS) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return text;
+          lastError = new Error(`Empty response from ${model}`);
+        } else {
+          const errText = await res.text();
+          console.warn(`Gemini model ${model} failed with key starting with ${currentKey.substring(0, 5)}...: ${errText}`);
+          lastError = new Error(`${model}: ${res.status} ${errText}`);
         }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
-        lastError = new Error(`Empty response from ${model}`);
-      } else {
-        const errText = await res.text();
-        console.warn(`Gemini model ${model} failed: ${errText}`);
-        lastError = new Error(`${model}: ${res.status} ${errText}`);
+      } catch (e) {
+        console.warn(`Error calling ${model} with key starting with ${currentKey.substring(0, 5)}...:`, e);
+        lastError = e;
       }
-    } catch (e) {
-      console.warn(`Error calling ${model}:`, e);
-      lastError = e;
     }
   }
-  throw lastError || new Error("All Gemini models failed");
+  throw lastError ?? new Error("All Gemini models and API keys failed");
 }
 
 async function getLearningContext() {

@@ -23,6 +23,7 @@ import type {
   SpeakingPracticeSubmissionFields,
   GrammarPracticeSubmissionFields,
 } from "./types";
+import { uploadFile } from "./publitio";
 
 const GRIST_URL = process.env.GRIST_URL ?? process.env.NEXT_PUBLIC_GRIST_URL ?? "https://docs.getgrist.com/api";
 const GRIST_DOC = process.env.GRIST_DOC ?? process.env.NEXT_PUBLIC_GRIST_DOC ?? "";
@@ -43,33 +44,57 @@ const GEMINI_MODELS = [
   "gemini-3.5-flash",
 ];
 
+function getGeminiApiKeys(): string[] {
+  return [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4
+  ].filter((key): key is string => !!key && key.trim() !== "");
+}
+
 async function callGemini(
-  apiKey: string,
+  apiKey: string | undefined,
   body: object
 ): Promise<string> {
+  const keys = getGeminiApiKeys();
+  if (apiKey && !keys.includes(apiKey)) {
+    keys.unshift(apiKey);
+  }
+  if (keys.length === 0) {
+    throw new Error("No Gemini API keys configured in environment variables.");
+  }
+
   let lastError: Error | null = null;
-  for (const model of GEMINI_MODELS) {
-    console.log(`Using model ${model}`)
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+  for (const currentKey of keys) {
+    for (const model of GEMINI_MODELS) {
+      console.log(`Using model ${model} with key starting with ${currentKey.substring(0, 5)}...`);
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }
+        );
+        if (res.ok) {
+          const data = await res.json() as any;
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return text;
+          lastError = new Error(`Empty response from ${model}`);
+        } else {
+          const errText = await res.text();
+          console.warn(`Gemini model ${model} failed (${res.status}): ${errText}`);
+          lastError = new Error(`${model}: ${res.status} ${errText}`);
+        }
+      } catch (err: any) {
+        console.warn(`Fetch to Gemini model ${model} failed:`, err);
+        lastError = err;
       }
-    );
-    if (res.ok) {
-      const data = await res.json() as any;
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return text;
-      lastError = new Error(`Empty response from ${model}`);
-    } else {
-      const errText = await res.text();
-      console.warn(`Gemini model ${model} failed (${res.status}): ${errText}`);
-      lastError = new Error(`${model}: ${res.status} ${errText}`);
     }
   }
-  throw lastError ?? new Error("All Gemini models failed");
+  throw lastError ?? new Error("All Gemini models and API keys failed");
 }
 
 function findMatchingBraceIndex(str: string, startIdx: number): number {
@@ -1040,6 +1065,144 @@ export async function updateSpeakingPractice(
   });
 }
 
+interface WavConversionOptions {
+  numChannels: number;
+  sampleRate: number;
+  bitsPerSample: number;
+}
+
+function parseMimeType(mimeType: string): WavConversionOptions {
+  const [fileType, ...params] = mimeType.split(";").map((s) => s.trim());
+  const [_, format] = fileType.split("/");
+
+  const options: Partial<WavConversionOptions> = {
+    numChannels: 1,
+  };
+
+  if (format && format.startsWith("L")) {
+    const bits = parseInt(format.slice(1), 10);
+    if (!isNaN(bits)) {
+      options.bitsPerSample = bits;
+    }
+  }
+
+  for (const param of params) {
+    const [key, value] = param.split("=").map((s) => s.trim());
+    if (key === "rate") {
+      options.sampleRate = parseInt(value, 10);
+    }
+  }
+
+  return options as WavConversionOptions;
+}
+
+function createWavHeader(dataLength: number, options: WavConversionOptions): Buffer {
+  const { numChannels, sampleRate, bitsPerSample } = options;
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const buffer = Buffer.alloc(44);
+
+  buffer.write("RIFF", 0); // ChunkID
+  buffer.writeUInt32LE(36 + dataLength, 4); // ChunkSize
+  buffer.write("WAVE", 8); // Format
+  buffer.write("fmt ", 12); // Subchunk1ID
+  buffer.writeUInt32LE(16, 16); // Subchunk1Size (PCM)
+  buffer.writeUInt16LE(1, 20); // AudioFormat (1 = PCM)
+  buffer.writeUInt16LE(numChannels, 22); // NumChannels
+  buffer.writeUInt32LE(sampleRate, 24); // SampleRate
+  buffer.writeUInt32LE(byteRate, 28); // ByteRate
+  buffer.writeUInt16LE(blockAlign, 32); // BlockAlign
+  buffer.writeUInt16LE(bitsPerSample, 34); // BitsPerSample
+  buffer.write("data", 36); // Subchunk2ID
+  buffer.writeUInt32LE(dataLength, 40); // Subchunk2Size
+
+  return buffer;
+}
+
+function convertToWav(rawData: string, mimeType: string): Buffer {
+  const options = parseMimeType(mimeType);
+  const wavHeader = createWavHeader(rawData.length, options);
+  const buffer = Buffer.from(rawData, "base64");
+
+  return Buffer.concat([wavHeader, buffer]);
+}
+
+async function generateVoiceOver(apiKey: string | undefined, word: string): Promise<Buffer | null> {
+  const keys = getGeminiApiKeys();
+  if (apiKey && !keys.includes(apiKey)) {
+    keys.unshift(apiKey);
+  }
+  if (keys.length === 0) {
+    console.warn("No Gemini API keys configured in environment variables.");
+    return null;
+  }
+
+  const prompt = `Read the following transcript based on the audio profile and director's note.
+
+# Audio Profile
+A clear and authoritative corporate trainer.
+
+# Director's note
+Style: Professional, authoritative, clear articulation with standard broadcast cadence. Pace: Natural conversational pace. Accent: Neutral.
+
+## Scene:
+The Corporate Studio.
+
+## Sample Context:
+Instructional E-learning. Measured pacing with clear pauses for clarity. Tone is authoritative, accessible, and articulate.
+
+## Transcript:
+${word}`;
+
+  let lastError: Error | null = null;
+  for (const currentKey of keys) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${currentKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseModalities: ["audio"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName: "Leda",
+                  },
+                },
+              },
+            },
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`TTS generation API returned status ${res.status}: ${errText}`);
+        lastError = new Error(`TTS status ${res.status}: ${errText}`);
+        continue;
+      }
+
+      const data = await res.json() as any;
+      const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      if (!inlineData || !inlineData.data) {
+        console.warn("No inline audio data in Gemini response");
+        lastError = new Error("No inline audio data in Gemini response");
+        continue;
+      }
+
+      const mimeType = inlineData.mimeType || "audio/L16;rate=24000";
+      return convertToWav(inlineData.data, mimeType);
+    } catch (err: any) {
+      console.error(`Error generating TTS voice over with key starting with ${currentKey.substring(0, 5)}:`, err);
+      lastError = err;
+    }
+  }
+  return null;
+}
+
 export async function resolveWordWithGemini(clickedWord: string, contextSentence: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
@@ -1159,6 +1322,20 @@ Provide the response as a JSON object matching this schema:
     }));
 
     await createVocabularyUsages(usageRecords);
+
+    // Generate and upload voice-over pronunciation
+    try {
+      const audioBuffer = await generateVoiceOver(apiKey, parsed.word);
+      if (audioBuffer) {
+        const cleanWord = parsed.word.trim();
+        const uploaded = await uploadFile(audioBuffer, `${cleanWord}.wav`, "audio/wav");
+        if (uploaded && uploaded.id) {
+          await updateVocabulary(newId, { audioFileId: uploaded.id });
+        }
+      }
+    } catch (audioErr) {
+      console.error("Failed to automatically generate voice over for vocabulary:", audioErr);
+    }
 
     const itemsRes = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records?filter=${encodeURIComponent(JSON.stringify({ id: [newId] }))}`);
     return itemsRes.records[0] || null;

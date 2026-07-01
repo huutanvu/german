@@ -16,7 +16,7 @@ export default function VocabularyPage() {
   const [loading, setLoading] = useState(true);
 
   function playAudio(audioFileId: string) {
-    const audio = new Audio(`https://media.publit.io/file/german/${audioFileId}.mp3`);
+    const audio = new Audio(`https://media.publit.io/file/german/${audioFileId}.wav`);
     audio.play().catch(err => console.error("Failed to play pronunciation audio:", err));
   }
 

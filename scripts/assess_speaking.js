@@ -14,12 +14,21 @@ const getEnv = (key) => {
 const GRIST_URL = getEnv('GRIST_URL') || 'https://docs.getgrist.com/api';
 const GRIST_DOC = getEnv('GRIST_DOC');
 const GRIST_KEY = getEnv('GRIST_KEY');
-const GEMINI_API_KEY = getEnv('GEMINI_API_KEY');
+const getGeminiApiKeys = () => {
+  return [
+    getEnv('GEMINI_API_KEY'),
+    getEnv('GEMINI_API_KEY_2'),
+    getEnv('GEMINI_API_KEY_3'),
+    getEnv('GEMINI_API_KEY_4')
+  ].filter(key => !!key && key.trim() !== "");
+};
+
+const keys = getGeminiApiKeys();
 const PUBLITIO_KEY = getEnv('PUBLITIO_API_KEY');
 const PUBLITIO_SECRET = getEnv('PUBLITIO_API_SECRET');
 const PUBLITIO_FOLDER_ID = getEnv('PUBLITIO_FOLDER_ID');
 
-if (!GRIST_DOC || !GRIST_KEY || !GEMINI_API_KEY) {
+if (!GRIST_DOC || !GRIST_KEY || keys.length === 0) {
   console.error('Error: Grist or Gemini credentials not found.');
   process.exit(1);
 }
@@ -104,45 +113,53 @@ Respond strictly with a JSON object in this format:
   console.log('Calling Gemini for assessment...');
   const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
   let geminiReply = null;
+  let lastError = null;
 
-  for (const model of models) {
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: "audio/webm",
-                    data: audioBase64
+  for (const currentKey of keys) {
+    for (const model of models) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: "audio/webm",
+                      data: audioBase64
+                    }
+                  },
+                  {
+                    text: prompt
                   }
-                },
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-          },
-        }),
-      });
+                ]
+              }
+            ],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        geminiReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (geminiReply) break;
-      } else {
-        console.warn(`Model ${model} failed: ${res.status}`);
+        if (res.ok) {
+          const data = await res.json();
+          geminiReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (geminiReply) break;
+        } else {
+          const errText = await res.text();
+          console.warn(`Model ${model} failed with key starting with ${currentKey.substring(0, 5)}...: ${res.status} ${errText}`);
+          lastError = new Error(`${model} failed: ${res.status}`);
+        }
+      } catch (err) {
+        console.warn(`Fetch error for model ${model} with key starting with ${currentKey.substring(0, 5)}...:`, err);
+        lastError = err;
       }
-    } catch (err) {
-      console.warn(`Model ${model} error:`, err);
     }
+    if (geminiReply) break;
   }
+
 
   if (!geminiReply) {
     throw new Error('Gemini assessment failed across all models.');

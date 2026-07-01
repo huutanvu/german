@@ -205,7 +205,7 @@ export default function ReadingDetail({ id }: { id: number }) {
   }
 
   const audioUrl = exercise.fields.audioFileId
-    ? `https://media.publit.io/file/german/${exercise.fields.audioFileId}.mp3`
+    ? `https://media.publit.io/file/german/${exercise.fields.audioFileId}.wav`
     : null;
 
   return (

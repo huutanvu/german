@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 
 function loadEnv() {
   const envPaths = [
@@ -30,15 +31,23 @@ loadEnv();
 const GRIST_URL = process.env.GRIST_URL || process.env.NEXT_PUBLIC_GRIST_URL || 'https://docs.getgrist.com/api';
 const GRIST_DOC = process.env.GRIST_DOC || process.env.NEXT_PUBLIC_GRIST_DOC;
 const GRIST_KEY = process.env.GRIST_KEY || process.env.NEXT_PUBLIC_GRIST_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+function getGeminiApiKeys(): string[] {
+  return [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4
+  ].filter((key): key is string => !!key && key.trim() !== "");
+}
 
-if (!GRIST_DOC || !GRIST_KEY) {
-  console.error('Error: Grist credentials not found.');
+const keys = getGeminiApiKeys();
+if (keys.length === 0) {
+  console.error('Error: No GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, or GEMINI_API_KEY_4 found in environment variables. Please get a free key from https://aistudio.google.com and add it to your .env file.');
   process.exit(1);
 }
 
-if (!GEMINI_API_KEY) {
-  console.error('Error: GEMINI_API_KEY not found in environment variables. Please get a free key from https://aistudio.google.com and add it to your .env file.');
+if (!GRIST_DOC || !GRIST_KEY) {
+  console.error('Error: Grist credentials not found.');
   process.exit(1);
 }
 
@@ -47,6 +56,194 @@ const headers = {
   Authorization: `Bearer ${GRIST_KEY}`,
   'Content-Type': 'application/json',
 };
+
+const PUBLITIO_KEY = process.env.PUBLITIO_API_KEY ?? '';
+const PUBLITIO_SECRET = process.env.PUBLITIO_API_SECRET ?? '';
+const PUBLITIO_FOLDER_ID = process.env.PUBLITIO_FOLDER_ID ?? '';
+
+function getAuthParams(): Record<string, string> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = Math.random().toString(36).substring(2, 10);
+  const signature = createHash('sha1')
+    .update(timestamp + nonce + PUBLITIO_SECRET)
+    .digest('hex');
+  return {
+    api_key: PUBLITIO_KEY,
+    api_timestamp: timestamp,
+    api_nonce: nonce,
+    api_signature: signature,
+  };
+}
+
+async function uploadFileToPublitio(file: Buffer, filename: string, mimeType = 'audio/wav'): Promise<string | null> {
+  if (!PUBLITIO_KEY || !PUBLITIO_SECRET) {
+    console.warn("Publit.io credentials not found, skipping audio upload.");
+    return null;
+  }
+  try {
+    const authParams = getAuthParams();
+    const query = new URLSearchParams(authParams).toString();
+    const form = new FormData();
+    form.append('file', new Blob([file], { type: mimeType }), filename);
+    if (PUBLITIO_FOLDER_ID) {
+      form.append('folder', PUBLITIO_FOLDER_ID);
+    }
+    form.append('privacy', '1');
+
+    const res = await fetch(`https://api.publit.io/v1/files/create?${query}`, {
+      method: 'POST',
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.warn(`Publit.io upload failed: ${res.status} ${text}`);
+      return null;
+    }
+    const json = await res.json() as any;
+    return json.id || null;
+  } catch (err) {
+    console.error("Error uploading audio to Publitio:", err);
+    return null;
+  }
+}
+
+interface WavConversionOptions {
+  numChannels: number;
+  sampleRate: number;
+  bitsPerSample: number;
+}
+
+function parseMimeType(mimeType: string): WavConversionOptions {
+  const [fileType, ...params] = mimeType.split(";").map((s) => s.trim());
+  const [_, format] = fileType.split("/");
+
+  const options: Partial<WavConversionOptions> = {
+    numChannels: 1,
+  };
+
+  if (format && format.startsWith("L")) {
+    const bits = parseInt(format.slice(1), 10);
+    if (!isNaN(bits)) {
+      options.bitsPerSample = bits;
+    }
+  }
+
+  for (const param of params) {
+    const [key, value] = param.split("=").map((s) => s.trim());
+    if (key === "rate") {
+      options.sampleRate = parseInt(value, 10);
+    }
+  }
+
+  return options as WavConversionOptions;
+}
+
+function createWavHeader(dataLength: number, options: WavConversionOptions): Buffer {
+  const { numChannels, sampleRate, bitsPerSample } = options;
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const buffer = Buffer.alloc(44);
+
+  buffer.write("RIFF", 0); // ChunkID
+  buffer.writeUInt32LE(36 + dataLength, 4); // ChunkSize
+  buffer.write("WAVE", 8); // Format
+  buffer.write("fmt ", 12); // Subchunk1ID
+  buffer.writeUInt32LE(16, 16); // Subchunk1Size (PCM)
+  buffer.writeUInt16LE(1, 20); // AudioFormat (1 = PCM)
+  buffer.writeUInt16LE(numChannels, 22); // NumChannels
+  buffer.writeUInt32LE(sampleRate, 24); // SampleRate
+  buffer.writeUInt32LE(byteRate, 28); // ByteRate
+  buffer.writeUInt16LE(blockAlign, 32); // BlockAlign
+  buffer.writeUInt16LE(bitsPerSample, 34); // BitsPerSample
+  buffer.write("data", 36); // Subchunk2ID
+  buffer.writeUInt32LE(dataLength, 40); // Subchunk2Size
+
+  return buffer;
+}
+
+function convertToWav(rawData: string, mimeType: string): Buffer {
+  const options = parseMimeType(mimeType);
+  const wavHeader = createWavHeader(rawData.length, options);
+  const buffer = Buffer.from(rawData, "base64");
+
+  return Buffer.concat([wavHeader, buffer]);
+}
+
+async function generateVoiceOver(apiKey: string | undefined, word: string): Promise<Buffer | null> {
+  const activeKeys = getGeminiApiKeys();
+  if (apiKey && !activeKeys.includes(apiKey)) {
+    activeKeys.unshift(apiKey);
+  }
+  if (activeKeys.length === 0) {
+    console.warn("No Gemini API keys configured in environment variables.");
+    return null;
+  }
+
+  const prompt = `Read the following transcript based on the audio profile and director's note.
+
+# Audio Profile
+A clear and authoritative corporate trainer.
+
+# Director's note
+Style: Professional, authoritative, clear articulation with standard broadcast cadence. Pace: Natural conversational pace. Accent: Neutral.
+
+## Scene:
+The Corporate Studio.
+
+## Sample Context:
+Instructional E-learning. Measured pacing with clear pauses for clarity. Tone is authoritative, accessible, and articulate.
+
+## Transcript:
+${word}`;
+
+  let lastError: Error | null = null;
+  for (const currentKey of activeKeys) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${currentKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseModalities: ["audio"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName: "Leda",
+                  },
+                },
+              },
+            },
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`TTS generation API returned status ${res.status}: ${errText}`);
+        lastError = new Error(`TTS status ${res.status}: ${errText}`);
+        continue;
+      }
+
+      const data = await res.json() as any;
+      const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      if (!inlineData || !inlineData.data) {
+        console.warn("No inline audio data in Gemini response");
+        lastError = new Error("No inline audio data in Gemini response");
+        continue;
+      }
+
+      const mimeType = inlineData.mimeType || "audio/L16;rate=24000";
+      return convertToWav(inlineData.data, mimeType);
+    } catch (err: any) {
+      console.error(`Error generating TTS voice over with key starting with ${currentKey.substring(0, 5)}:`, err);
+      lastError = err;
+    }
+  }
+  return null;
+}
 
 // ─── Fetch Unprocessed Words ──────────────────────────────────────
 async function fetchUnprocessed() {
@@ -233,38 +430,41 @@ Provide the response as a JSON object matching this schema:
   ];
 
   let lastError: Error | null = null;
-  for (const model of models) {
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-          },
-        }),
-      });
+  const activeKeys = getGeminiApiKeys();
+  for (const currentKey of activeKeys) {
+    for (const model of models) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }),
+        });
 
-      if (res.ok) {
-        const data = await res.json() as any;
-        const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (replyText) {
-          return safeJsonParse(replyText);
+        if (res.ok) {
+          const data = await res.json() as any;
+          const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (replyText) {
+            return safeJsonParse(replyText);
+          }
+          lastError = new Error(`Empty response from ${model}`);
+        } else {
+          const errText = await res.text();
+          console.warn(`Gemini model ${model} failed with key starting with ${currentKey.substring(0, 5)}... (${res.status}): ${errText}`);
+          lastError = new Error(`${model}: ${res.status} ${errText}`);
         }
-        lastError = new Error(`Empty response from ${model}`);
-      } else {
-        const errText = await res.text();
-        console.warn(`Gemini model ${model} failed (${res.status}): ${errText}`);
-        lastError = new Error(`${model}: ${res.status} ${errText}`);
+      } catch (e: any) {
+        console.warn(`Error calling ${model} with key starting with ${currentKey.substring(0, 5)}...:`, e);
+        lastError = e;
       }
-    } catch (e: any) {
-      console.warn(`Error calling ${model}:`, e);
-      lastError = e;
     }
   }
 
-  throw lastError ?? new Error('All Gemini models failed');
+  throw lastError ?? new Error('All Gemini API keys and models failed');
 }
 
 // ─── Update Grist ──────────────────────────────────────────────────
@@ -336,6 +536,22 @@ async function main() {
       const result = await askGemini(rawWord, context);
       console.log(`Gemini resolved "${rawWord}" -> "${result.word}"`);
 
+      let audioFileId = '';
+      try {
+        console.log(`Generating TTS voice over for "${result.word}"...`);
+        const audioBuffer = await generateVoiceOver(undefined, result.word);
+        if (audioBuffer) {
+          const cleanWord = result.word.trim();
+          const fileId = await uploadFileToPublitio(audioBuffer, `${cleanWord}.wav`, 'audio/wav');
+          if (fileId) {
+            audioFileId = fileId;
+            console.log(`Uploaded voice over to Publitio. File ID: ${audioFileId}`);
+          }
+        }
+      } catch (audioErr) {
+        console.error(`Failed to generate/upload voice over for "${result.word}":`, audioErr);
+      }
+
       const updatePayload = {
         word: result.word,
         meanings: result.meanings,
@@ -344,6 +560,7 @@ async function main() {
         grammar: result.grammar,
         grammar_vn: result.grammar_vn,
         partOfSpeech: result.partOfSpeech,
+        audioFileId,
       };
 
       await updateGrist(record.id, updatePayload);

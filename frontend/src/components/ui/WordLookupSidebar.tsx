@@ -254,7 +254,7 @@ export function WordLookupSidebar({
                     {vocabItem.fields.audioFileId && (
                       <button
                         onClick={() => {
-                          const audio = new Audio(`https://media.publit.io/file/german/${vocabItem.fields.audioFileId}.mp3`);
+                          const audio = new Audio(`https://media.publit.io/file/german/${vocabItem.fields.audioFileId}.wav`);
                           audio.play().catch(err => console.error("Failed to play pronunciation audio:", err));
                         }}
                         className="p-1 text-gray-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
