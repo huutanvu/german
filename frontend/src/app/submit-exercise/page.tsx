@@ -364,7 +364,7 @@ Provide the output as a single, valid JSON object matching this schema:
 Tokenization Rules:
 1. Every character in the germanText (including spaces and punctuation) must be represented as a token in sequence inside the "tokens" array.
 2. The "t" property must contain the exact text slice.
-3. If it is a word or verb, specify type "word" or "verb" and provide the "lemma" (nominative singular with article for nouns e.g., "die Patientenaufnahme", bare infinitive for verbs e.g., "sein", uninflected base form for adjectives/adverbs e.g., "wichtig").
+3. If it is a word or verb, specify type "word" or "verb" and provide the "lemma" (nominative singular with article for nouns e.g., "die Patientenaufnahme", bare infinitive for verbs e.g., "sein", uninflected base form for adjectives/adverbs e.g., "wichtig", and for articles e.g. der/die/das/dem/den/des/ein/eine/einem/einen/einer the lemma must match exactly the clean clicked word itself e.g., "dem" -> "dem", "den" -> "den").
 4. For proper names (people, places, brands), use type "name" and omit the lemma. Proper names are non-interactive.
 5. For space or punctuation tokens, omit the lemma and use type "space" or "punctuation".
 6. For separable verbs (e.g. "abholen" split into "hole" and "ab"), assign the same integer "sepId" to both tokens. For example, the stem token is {"t": "hole", "type": "verb", "lemma": "abholen", "sepId": 1} and the prefix token is {"t": "ab", "type": "prefix", "sepId": 1}. Do NOT calculate character offsets/spans yourself.
@@ -442,7 +442,7 @@ Provide the output as a single, valid JSON object matching this schema:
 Tokenization Rules:
 1. Every character in the targetText (including spaces and punctuation) must be represented as a token in sequence inside the "tokens" array.
 2. The "t" property must contain the exact text slice.
-3. If it is a word or verb, specify type "word" or "verb" and provide the "lemma" (nominative singular with article for nouns, bare infinitive for verbs, uninflected base form for adjectives/adverbs).
+3. If it is a word or verb, specify type "word" or "verb" and provide the "lemma" (nominative singular with article for nouns, bare infinitive for verbs, uninflected base form for adjectives/adverbs, and for articles e.g. der/die/das/dem/den/des/ein/eine/einem/einen/einer the lemma must match exactly the clean clicked word itself e.g., "dem" -> "dem", "den" -> "den").
 4. For proper names, use type "name" and omit the lemma. Proper names are non-interactive.
 5. For space or punctuation tokens, omit the lemma and use type "space" or "punctuation".
 6. For separable verbs (e.g. "abholen" split into "hole" and "ab"), assign the same integer "sepId" to both tokens. For example, the stem token is {"t": "hole", "type": "verb", "lemma": "abholen", "sepId": 1} and the prefix token is {"t": "ab", "type": "prefix", "sepId": 1}. Do NOT calculate character offsets/spans yourself.

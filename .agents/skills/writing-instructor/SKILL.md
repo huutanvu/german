@@ -27,7 +27,7 @@ When a writing practice is in `pending_correction` status:
      - `index`: 0-based sequential index.
      - `spans`: Array of `[start, end)` character offsets (inclusive start, exclusive end). For separable verbs, use exactly 2 spans: `[stem_span, prefix_span]`. For all other tokens, use exactly 1 span.
      - `type`: `"word" | "verb" | "separable" | "name" | "space" | "punctuation"`.
-     - `lemma` (omitted for name, space, and punctuation): Nouns must include definite article (e.g., "der Hund"), verbs must be bare infinitive (e.g., "abholen"), adjectives must be uninflected base form (e.g., "schnell").
+     - `lemma` (omitted for name, space, and punctuation): Nouns must include definite article (e.g., "der Hund"), verbs must be bare infinitive (e.g., "abholen"), adjectives must be uninflected base form (e.g., "schnell"), articles (e.g., der/die/das/dem/den/des/ein/eine/einem/einen/einer) must match exactly the clean word itself (e.g., "dem" -> "dem", "den" -> "den").
 4. Save the corrections to Grist using `upsert_writing_practice`:
    - `correctedParagraph`: Full corrected paragraph
    - `correctedTokensJson`: JSON object matching the `AnnotatedText` schema above (do not stringify, pass as a raw JSON object)

@@ -178,7 +178,7 @@ function safeJsonParse<T = any>(str: string): T {
 async function askGemini(rawWord: string, contextSentence: string): Promise<any> {
   const prompt = `You are a German language teacher fluent in both English and Vietnamese.
 Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
-Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs. For articles (e.g. der/die/das/dem/den/des), always map them to exactly the clean base form ("der", "die", "das", or "ein", "eine") without any parenthetical information, suffixes, or explanations (e.g. return "der" instead of "der (masculine definitiver Artikel)").
+Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs. For articles (e.g. der/die/das/dem/den/des, ein/eine/einem/einen/einer), always map them to exactly the clean clicked word form (e.g. if the input is 'dem', return exactly 'dem' as the resolved word, do not map it to 'der'). Do not add any parenthetical information, suffixes, or explanations to the resolved word name (e.g. return 'dem' instead of 'dem (dative)'). Instead, explain the grammatical function, case, and context (e.g. Dativ form of der/das) inside the grammar notes field.
 
 You must generate vocabulary context examples, translation, tips, and cautions for ALL of the following 7 professions:
 1. software_engineer
