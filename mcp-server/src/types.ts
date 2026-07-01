@@ -21,7 +21,7 @@ export interface VocabularyFields {
   meanings_vn?: string;
   level: string;
   type: string;
-  correctCount: number;
+  correctCount?: number;
   grammar: string;
   grammar_vn?: string;
   dailyUse: string;
@@ -50,6 +50,7 @@ export interface VocabularyReviewFields {
   correctedSentence: string;
   correctionFeedback: string;
   status: string;
+  correctCount?: number;
   reviewedAt?: string;
   userId?: string;
 }

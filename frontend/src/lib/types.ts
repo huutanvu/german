@@ -23,7 +23,7 @@ export interface VocabularyFields {
   meanings_vn?: string;
   level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   type: 'new' | 'revised' | 'permanent' | 'complicated';
-  correctCount: number;
+  correctCount?: number;
   grammar: string;
   grammar_vn?: string;
   dailyUse: string;
@@ -53,6 +53,7 @@ export interface VocabularyReviewFields {
   correctionFeedback: string;
   correctionFeedback_vn?: string;
   status: 'pending_correction' | 'corrected' | 'failed';
+  correctCount?: number;
   reviewedAt?: string;
   userId?: string;
 }

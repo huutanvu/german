@@ -59,7 +59,6 @@ export function registerVocabularyTools(server: McpServer) {
             fields: {
               ...fields,
               isProcessed: fields.isProcessed ?? (!!fields.meanings),
-              correctCount: 0,
               updatedAt: new Date().toISOString(),
             },
           },
@@ -78,11 +77,10 @@ export function registerVocabularyTools(server: McpServer) {
 
   server.tool(
     'update_vocabulary',
-    'Update details of an existing vocabulary word (e.g. increment correctCount, change type).',
+    'Update details of an existing vocabulary word (e.g. change type, meanings).',
     {
       id: z.number().describe('Grist row ID of the vocabulary item'),
       type: z.enum(['new', 'revised', 'permanent', 'complicated']).optional(),
-      correctCount: z.number().optional(),
       meanings: z.string().optional(),
       meanings_vn: z.string().optional(),
       grammar: z.string().optional(),
@@ -148,17 +146,17 @@ export function registerVocabularyTools(server: McpServer) {
       id: z.number().describe('Grist row ID of the review record'),
       correctedSentence: z.string().describe('The corrected German sentence'),
       correctionFeedback: z.string().describe('Feedback on grammar, spelling, word choice'),
+      correctionFeedback_vn: z.string().optional().describe('Feedback in Vietnamese'),
       status: z.enum(['corrected', 'failed']).describe('Whether the user sentence was correct or failed'),
+      correctCount: z.number().optional().describe('New consecutive correct review count'),
     },
-    async ({ id, correctedSentence, correctionFeedback, status }) => {
+    async ({ id, ...fields }) => {
       await gristPatch('/tables/VocabularyReviews/records', {
         records: [
           {
             id,
             fields: {
-              correctedSentence,
-              correctionFeedback,
-              status,
+              ...fields,
               reviewedAt: new Date().toISOString(),
             },
           },
@@ -169,7 +167,7 @@ export function registerVocabularyTools(server: McpServer) {
         content: [
           {
             type: 'text' as const,
-            text: `Review ID ${id} marked as '${status}' and updated with corrections.`,
+            text: `Review ID ${id} marked as '${fields.status}' and updated with corrections.`,
           },
         ],
       };

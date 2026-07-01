@@ -307,7 +307,7 @@ export function WordLookupSidebar({
               </div>
 
               {/* Audio upload controls for admin */}
-              {isAdmin && (
+              {isAdmin && !vocabItem.fields.audioFileId && (
                 <div className="bg-gray-50 dark:bg-slate-950/50 p-3 rounded-lg border border-gray-100 dark:border-slate-800 shadow-2xs">
                   <span className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 block mb-1">
                     {t("Upload Audio (Admin)", "Tải lên phát âm (Admin)")}

@@ -143,7 +143,7 @@ When executing a correction or generation task:
 
 1. **Daily Review Processing**:
    - Query `list_reviews` where `status = "pending_correction"`.
-   - For each review: check the `userSentence` field. If it is empty, blank, or contains only whitespace, skip it. Otherwise, check the user's sentence, provide spelling/grammar/style feedback, determine if correct, increment or reset `correctCount` in `Vocabulary`, and call `update_review` to save results in both English (`correctionFeedback`) and Vietnamese (`correctionFeedback_vn`), changing status to `corrected` or `failed`.
+   - For each review: check the `userSentence` field. If it is empty, blank, or contains only whitespace, skip it. Otherwise, check the user's sentence, provide spelling/grammar/style feedback, determine if correct, find the user's previous reviews for this word to determine the last `correctCount` (default to 0), calculate the new `correctCount` (increment for success, reset to 0 for failure), and call `update_review` to save results in both English (`correctionFeedback`) and Vietnamese (`correctionFeedback_vn`), status (`corrected` or `failed`), and new `correctCount`.
 2. **Vocabulary Capture & Stemming Processing**:
    - Query `Vocabulary` records where `isProcessed = false`.
    - For each record:

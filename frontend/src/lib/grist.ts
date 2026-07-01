@@ -452,7 +452,7 @@ export async function createVocabulary(
   fields: Partial<VocabularyFields>
 ): Promise<{ records: { id: number }[] }> {
   return gristWrite("POST", "/tables/Vocabulary/records", {
-    records: [{ fields: { ...fields, correctCount: 0, updatedAt: new Date().toISOString() } }],
+    records: [{ fields: { ...fields, updatedAt: new Date().toISOString() } }],
   });
 }
 

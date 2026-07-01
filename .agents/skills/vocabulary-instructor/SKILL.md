@@ -36,4 +36,4 @@ When the user does vocabulary reviews:
 1. Fetch pending reviews using `list_reviews` with status `pending_correction`.
 2. For each review, check the `userSentence` field. If it is empty, blank, or contains only whitespace, skip it (this indicates the word has been added to the collection but the user hasn't written a review sentence yet). Otherwise, evaluate the user's sentence and generate corrected sentences + grammar feedback.
 3. Update vocabulary review using `update_review` and update the status to `corrected` or `failed`.
-4. Adjust `correctCount` in the `Vocabulary` table accordingly (increment for success, reset for failure, mastery at 5).
+4. Adjust `correctCount` in the `VocabularyReviews` table record itself (determine previous correctCount from the user's past reviews for this word, increment it for success, or reset to 0 for failure, mastery at 5).
