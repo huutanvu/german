@@ -214,7 +214,7 @@ export default function SpeakingDetail({ id }: { id: number }) {
     : null;
 
   const targetAudioUrl = exercise.fields.targetAudioFileId
-    ? `https://media.publit.io/file/german/${exercise.fields.targetAudioFileId}.wav`
+    ? `https://media.publit.io/file/german/${exercise.fields.targetAudioFileId}.mp3`
     : null;
 
   // Resolve pronunciation and grammar feedback JSON/text columns based on language setting

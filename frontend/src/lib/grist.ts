@@ -35,13 +35,13 @@ const base = `${GRIST_URL}/docs/${GRIST_DOC}`;
 // Gemini helper with model fallback chain
 // ---------------------------------------------------------------------------
 const GEMINI_MODELS = [
-  "gemini-3.5-live-translate",
   "gemini-3.1-flash-lite",
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-  "gemini-3-flash-preview",
-  "gemini-2.0-flash",
-  "gemini-3.5-flash",
+  // "gemini-3.5-live-translate",
+  // "gemini-2.5-flash",
+  // "gemini-2.5-pro",
+  // "gemini-3-flash-preview",
+  // "gemini-2.0-flash",
+  // "gemini-3.5-flash",
 ];
 
 function getGeminiApiKeys(): string[] {
@@ -1333,19 +1333,19 @@ Provide the response as a JSON object matching this schema:
     await createVocabularyUsages(usageRecords);
 
     // Generate and upload voice-over pronunciation
-    try {
-      const audioBuffer = await generateVoiceOver(apiKey, parsed.word);
-      if (audioBuffer) {
-        const cleanWord = parsed.word.trim();
-        const uploaded = await uploadFile(audioBuffer, `${cleanWord}.wav`, "audio/wav");
-        if (uploaded && uploaded.id) {
-          await updateVocabulary(newId, { audioFileId: uploaded.id });
-        }
-      }
-    } catch (audioErr) {
-      console.error("Failed to automatically generate voice over for vocabulary:", audioErr);
-    }
-
+    // try {
+    //   const audioBuffer = await generateVoiceOver(apiKey, parsed.word);
+    //   if (audioBuffer) {
+    //     const cleanWord = parsed.word.trim();
+    //     const uploaded = await uploadFile(audioBuffer, `${cleanWord}.wav`, "audio/wav");
+    //     if (uploaded && uploaded.id) {
+    //       await updateVocabulary(newId, { audioFileId: uploaded.id });
+    //     }
+    //   }
+    // } catch (audioErr) {
+    //   console.error("Failed to automatically generate voice over for vocabulary:", audioErr);
+    // }
+    //
     const itemsRes = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records?filter=${encodeURIComponent(JSON.stringify({ id: [newId] }))}`);
     return itemsRes.records[0] || null;
   }
