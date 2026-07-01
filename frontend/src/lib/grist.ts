@@ -1051,6 +1051,7 @@ Return ONLY the canonical dictionary form of this word as a JSON object:
 - Noun → nominative singular with article (e.g. "die Aufgabe", "der Hund", "das Treffen")
 - Adjective/Adverb → base form (e.g. "schnell", "gut")
 - For separable verbs, reconstruct the full infinitive from the prefix at the end of the clause.
+- Articles → map definite articles (der, die, das, dem, den, des) to exactly their base nominative form: "der", "die", or "das" depending on the gender, with no additional info, parentheses, or suffixes (e.g. return "der" and not "der (masculine nominative definite article)"). Same for indefinite articles/pronouns (e.g. "ein", "eine").
 
 Response format: { "resolvedWord": "..." }`;
 
@@ -1073,7 +1074,7 @@ export async function lookupAndAddWord(rawWord: string, contextSentence: string,
 
   const prompt = `You are a German language teacher fluent in both English and Vietnamese.
 Analyze the German word "${rawWord}" captured in this sentence context: "${contextSentence}".
-Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs.
+Reconstruct the correct base form (infinitive for verbs, nominative singular with gender article for nouns, base form for adjectives). Pay special attention to German separable verbs. For articles (e.g. der/die/das/dem/den/des), always map them to exactly the clean base form ("der", "die", "das", or "ein", "eine") without any parenthetical information, suffixes, or explanations (e.g. return "der" instead of "der (masculine definitiver Artikel)").
 
 You must generate vocabulary context examples, translation, tips, and cautions for ALL of the following 7 professions:
 1. software_engineer
