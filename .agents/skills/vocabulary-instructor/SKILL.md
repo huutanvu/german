@@ -16,6 +16,7 @@ For new or unprocessed words (`isProcessed` = `false` in `Vocabulary` table):
    - `meanings`: English translation(s)
    - `meanings_vn`: Vietnamese translation(s)
    - `level`: CEFR Level
+   - `partOfSpeech`: Categorized word type (`noun`, `verb`, `adjective`, `adverb`, `preposition`, `pronoun`, `conjunction`, `phrase`)
    - `type`: `new`
    - `grammar`: Grammatical notes (articles, plurals, auxiliary verbs, etc.)
    - `grammar_vn`: Grammatical notes in Vietnamese
@@ -33,6 +34,6 @@ For new or unprocessed words (`isProcessed` = `false` in `Vocabulary` table):
 ## 2. Vocabulary Review Workflow
 When the user does vocabulary reviews:
 1. Fetch pending reviews using `list_reviews` with status `pending_correction`.
-2. For each review, evaluate the user's sentence and generate corrected sentences + grammar feedback.
+2. For each review, check the `userSentence` field. If it is empty, blank, or contains only whitespace, skip it (this indicates the word has been added to the collection but the user hasn't written a review sentence yet). Otherwise, evaluate the user's sentence and generate corrected sentences + grammar feedback.
 3. Update vocabulary review using `update_review` and update the status to `corrected` or `failed`.
 4. Adjust `correctCount` in the `Vocabulary` table accordingly (increment for success, reset for failure, mastery at 5).

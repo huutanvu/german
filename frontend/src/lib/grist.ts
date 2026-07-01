@@ -317,7 +317,6 @@ export async function listVocabulary(
   const filters: Record<string, string[]> = {};
   if (level) filters.level = [level];
   if (type) filters.type = [type];
-  if (resolvedUserId) filters.userId = [resolvedUserId];
 
   const query = Object.keys(filters).length
     ? `?filter=${encodeURIComponent(JSON.stringify(filters))}`
@@ -368,11 +367,56 @@ export async function listVocabulary(
   return res;
 }
 
+export async function listVocabularyByIds(ids: number[]): Promise<GristResponse<VocabularyFields>> {
+  if (ids.length === 0) return { records: [] };
+  const resolvedUserId = await getUserIdFromCookie();
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ id: ids }))}`;
+  const res = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
+
+  // Resolve custom profession usage overrides
+  try {
+    const userProfession = await getProfileProfession(resolvedUserId);
+    if (userProfession && res.records.length > 0) {
+      const usagesQuery = `?filter=${encodeURIComponent(JSON.stringify({ vocabId: ids, profession: [userProfession, 'general'] }))}`;
+      const usagesRes = await gristGet<GristResponse<VocabularyUsageFields>>(`/tables/VocabularyUsage/records${usagesQuery}`);
+      
+      const usagesMap = new Map<number, Record<string, VocabularyUsageFields>>();
+      for (const record of usagesRes.records) {
+        const vId = Array.isArray(record.fields.vocabId) ? record.fields.vocabId[1] : record.fields.vocabId;
+        if (typeof vId === 'number') {
+          if (!usagesMap.has(vId)) {
+            usagesMap.set(vId, {});
+          }
+          usagesMap.get(vId)![record.fields.profession] = record.fields;
+        }
+      }
+
+      for (const record of res.records) {
+        const profMap = usagesMap.get(record.id);
+        const usage = profMap ? (profMap[userProfession] || profMap['general']) : null;
+        if (usage) {
+          if (usage.dailyUse) record.fields.dailyUse = usage.dailyUse;
+          if (usage.dailyUse_vn) record.fields.dailyUse_vn = usage.dailyUse_vn;
+          if (usage.professionalUse) record.fields.professionalUse = usage.professionalUse;
+          if (usage.professionalUse_vn) record.fields.professionalUse_vn = usage.professionalUse_vn;
+          if (usage.tips) record.fields.tips = usage.tips;
+          if (usage.tips_vn) record.fields.tips_vn = usage.tips_vn;
+          if (usage.caution) record.fields.caution = usage.caution;
+          if (usage.caution_vn) record.fields.caution_vn = usage.caution_vn;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to merge vocabulary usages in listVocabularyByIds:", err);
+  }
+
+  return res;
+}
+
 export async function getVocabularyByWord(word: string | string[]): Promise<Vocabulary | null> {
   const resolvedUserId = await getUserIdFromCookie();
   const words = Array.isArray(word) ? word : [word];
   const filters: Record<string, any[]> = { word: words };
-  if (resolvedUserId) filters.userId = [resolvedUserId];
   const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
   const res = await gristGet<GristResponse<VocabularyFields>>(`/tables/Vocabulary/records${query}`);
   const item = res.records.length > 0 ? res.records[0] : null;
@@ -407,9 +451,8 @@ export async function getVocabularyByWord(word: string | string[]): Promise<Voca
 export async function createVocabulary(
   fields: Partial<VocabularyFields>
 ): Promise<{ records: { id: number }[] }> {
-  const resolvedUserId = fields.userId || (await getUserIdFromCookie());
   return gristWrite("POST", "/tables/Vocabulary/records", {
-    records: [{ fields: { ...fields, correctCount: 0, updatedAt: new Date().toISOString(), ...(resolvedUserId ? { userId: resolvedUserId } : {}) } }],
+    records: [{ fields: { ...fields, correctCount: 0, updatedAt: new Date().toISOString() } }],
   });
 }
 
@@ -1060,6 +1103,7 @@ Provide the response as a JSON object matching this schema:
   "meanings": "English translations/meanings separated by commas",
   "meanings_vn": "Vietnamese translations/meanings separated by commas",
   "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
+  "partOfSpeech": "Word type (Choice: 'noun', 'verb', 'adjective', 'adverb', 'preposition', 'pronoun', 'conjunction', 'phrase')",
   "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc. in English",
   "grammar_vn": "Grammatical notes explained in Vietnamese",
   "usages": [
@@ -1092,8 +1136,8 @@ Provide the response as a JSON object matching this schema:
     type: "new",
     grammar: parsed.grammar,
     grammar_vn: parsed.grammar_vn,
+    partOfSpeech: parsed.partOfSpeech,
     isProcessed: true,
-    ...(resolvedUserId ? { userId: resolvedUserId } : {}),
   });
 
   if (gristRes.records && gristRes.records.length > 0) {
@@ -1111,7 +1155,6 @@ Provide the response as a JSON object matching this schema:
       tips_vn: u.tips_vn,
       caution: u.caution,
       caution_vn: u.caution_vn,
-      ...(resolvedUserId ? { userId: resolvedUserId } : {}),
     }));
 
     await createVocabularyUsages(usageRecords);
@@ -1157,6 +1200,38 @@ export async function getVocabularyUsageForUser(
 ): Promise<VocabularyUsage | null> {
   const res = await listVocabularyUsage(vocabId, profession);
   return res.records.length > 0 ? res.records[0] : null;
+}
+
+export async function getReviewsForWord(vocabId: number): Promise<VocabularyReview[]> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) return [];
+  const filters = { vocabId: [vocabId], userId: [resolvedUserId] };
+  const query = `?filter=${encodeURIComponent(JSON.stringify(filters))}`;
+  const res = await gristGet<GristResponse<VocabularyReviewFields>>(`/tables/VocabularyReviews/records${query}`);
+  return res.records;
+}
+
+export async function addWordToCollection(vocabId: number): Promise<void> {
+  const resolvedUserId = await getUserIdFromCookie();
+  if (!resolvedUserId) throw new Error("User not logged in");
+  
+  const existing = await getReviewsForWord(vocabId);
+  const pending = existing.find(r => r.fields.status === 'pending_correction');
+  if (pending) return; // already pending review
+  
+  await gristWrite("POST", "/tables/VocabularyReviews/records", {
+    records: [
+      {
+        fields: {
+          vocabId,
+          userId: resolvedUserId,
+          userSentence: "",
+          status: "pending_correction",
+          reviewedAt: new Date().toISOString()
+        }
+      }
+    ]
+  });
 }
 
 export async function addPracticeTemplate(

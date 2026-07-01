@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getLearningContext, listVocabulary, listReviews, listWritingPractices, listReadingPractices, listGrammarPractices, listSpeakingPractices } from "@/lib/grist";
+import { getLearningContext, listVocabulary, listReviews, listWritingPractices, listReadingPractices, listGrammarPractices, listSpeakingPractices, listVocabularyByIds } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 import type { LearningContext, VocabularyFields } from "@/lib/types";
 
@@ -11,10 +11,10 @@ export default function Dashboard() {
   const [context, setContext] = useState<LearningContext | null>(null);
   const [vocabStats, setVocabStats] = useState({ total: 0, new: 0, revised: 0, permanent: 0, complicated: 0 });
   const [pendingReviews, setPendingReviews] = useState(0);
-  const [activeWriting, setActiveWriting] = useState<string>("No active topic");
-  const [activeReading, setActiveReading] = useState<string>("No active passage");
-  const [activeGrammar, setActiveGrammar] = useState<string>("No active drill");
-  const [activeSpeaking, setActiveSpeaking] = useState<string>("No active prompt");
+  const [activeWriting, setActiveWriting] = useState<string | null>(null);
+  const [activeReading, setActiveReading] = useState<string | null>(null);
+  const [activeGrammar, setActiveGrammar] = useState<string | null>(null);
+  const [activeSpeaking, setActiveSpeaking] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +23,10 @@ export default function Dashboard() {
         const ctx = await getLearningContext();
         setContext(ctx);
 
-        const vocabRes = await listVocabulary();
+        const reviewsAllRes = await listReviews();
+        const uniqueVocabIds = Array.from(new Set(reviewsAllRes.records.map(r => Array.isArray(r.fields.vocabId) ? r.fields.vocabId[1] : r.fields.vocabId).filter(Boolean))) as number[];
+        const vocabRes = await listVocabularyByIds(uniqueVocabIds);
+
         const stats = { total: 0, new: 0, revised: 0, permanent: 0, complicated: 0 };
         vocabRes.records.forEach((r) => {
           stats.total++;
@@ -35,7 +38,7 @@ export default function Dashboard() {
         setVocabStats(stats);
 
         const reviewsRes = await listReviews("pending_correction");
-        setPendingReviews(reviewsRes.records.length);
+        setPendingReviews(reviewsRes.records.filter(r => r.fields.userSentence !== "").length);
 
         const writingRes = await listWritingPractices();
         const activeW = writingRes.records.find(r => r.fields.status !== "corrected");

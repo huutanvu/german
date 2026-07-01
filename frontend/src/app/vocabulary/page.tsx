@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { getLearningContext, listVocabulary, listReviews, upsertReview } from "@/lib/grist";
+import { getLearningContext, listVocabulary, listReviews, upsertReview, listVocabularyByIds } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 import type { Vocabulary, VocabularyReview } from "@/lib/types";
 
@@ -15,26 +15,35 @@ export default function VocabularyPage() {
   const [submitting, setSubmitting] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
 
+  function playAudio(audioFileId: string) {
+    const audio = new Audio(`https://media.publit.io/file/german/${audioFileId}.mp3`);
+    audio.play().catch(err => console.error("Failed to play pronunciation audio:", err));
+  }
+
   async function loadVocabData() {
     try {
       const ctx = await getLearningContext();
       setContext(ctx);
 
-      const vocabRes = await listVocabulary();
-      // Filter words level <= target level and type is 'new' or 'revised'
+      const reviewsRes = await listReviews();
+      setReviews(reviewsRes.records);
+
+      const pendingReviews = reviewsRes.records.filter(r => r.fields.status === 'pending_correction');
+      const pendingVocabIds = pendingReviews.map(r => Array.isArray(r.fields.vocabId) ? r.fields.vocabId[1] : r.fields.vocabId).filter(Boolean) as number[];
+
+      const vocabRes = await listVocabularyByIds(pendingVocabIds);
+
+      // Filter words level <= target level
       const targetLvl = ctx?.fields.targetLevel || "B1";
       const lvlWeights: Record<string, number> = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
       const targetWeight = lvlWeights[targetLvl] || 3;
 
       const reviewable = vocabRes.records.filter((r) => {
         const wordLvlWeight = lvlWeights[r.fields.level] || 1;
-        return wordLvlWeight <= targetWeight && (r.fields.type === "new" || r.fields.type === "revised");
+        return wordLvlWeight <= targetWeight;
       });
 
       setWords(reviewable.slice(0, 10));
-
-      const reviewsRes = await listReviews();
-      setReviews(reviewsRes.records);
     } catch (err) {
       console.error("Failed to load vocabulary data:", err);
     } finally {
@@ -137,7 +146,20 @@ export default function VocabularyPage() {
               return (
                 <div key={word.id} className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{word.fields.word}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{word.fields.word}</h3>
+                      {word.fields.audioFileId && (
+                        <button
+                          onClick={() => playAudio(word.fields.audioFileId!)}
+                          className="p-1 text-gray-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title={t("Listen", "Nghe")}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                     <Popover.Root>
                       <Popover.Trigger asChild>
                         <button
@@ -156,10 +178,15 @@ export default function VocabularyPage() {
                           sideOffset={6}
                           className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-xl p-4 z-50 flex flex-col gap-3 max-w-[320px] font-sans text-xs outline-none text-gray-900 dark:text-gray-100"
                         >
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[10px] font-bold rounded">
                               {word.fields.level}
                             </span>
+                            {word.fields.partOfSpeech && (
+                              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold rounded uppercase tracking-wider">
+                                {word.fields.partOfSpeech}
+                              </span>
+                            )}
                             <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[10px] font-bold rounded">
                               {grammarVal}
                             </span>
@@ -182,7 +209,7 @@ export default function VocabularyPage() {
                     </Popover.Root>
                   </div>
 
-                  {pendingReview ? (
+                  {pendingReview && pendingReview.fields.userSentence !== "" ? (
                     <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs p-3 rounded border border-amber-200 dark:border-amber-900/40 font-medium">
                       {t("Sentence submitted", "Câu đã nộp")}: "{pendingReview.fields.userSentence}" ({t("Pending offline AI correction", "Đang chờ AI sửa lỗi offline")})
                     </div>

@@ -18,7 +18,6 @@ export function registerVocabularyTools(server: McpServer) {
       const filters: Record<string, any[]> = {};
       if (level) filters.level = [level];
       if (type) filters.type = [type];
-      if (userId) filters.userId = [userId];
 
       const query = Object.keys(filters).length ? gristFilter(filters) : '';
       const data = await gristGet<GristRecordsResponse<VocabularyFields>>(
@@ -48,6 +47,8 @@ export function registerVocabularyTools(server: McpServer) {
       grammar: z.string().describe('Article, plural form (nouns), aux + past participle (verbs), etc.'),
       grammar_vn: z.string().optional().describe('Grammatical notes in Vietnamese'),
       context: z.string().optional().describe('Sentence context where this word was captured'),
+      partOfSpeech: z.enum(['noun', 'verb', 'adjective', 'adverb', 'preposition', 'pronoun', 'conjunction', 'phrase']).optional().describe('Part of speech'),
+      audioFileId: z.string().optional().describe('Publitio audio file ID'),
       isProcessed: z.boolean().optional().describe('True if this word is fully filled out, false if waiting in queue'),
       userId: z.string().optional().describe('User ID for multi-user support'),
     },
@@ -87,6 +88,8 @@ export function registerVocabularyTools(server: McpServer) {
       grammar: z.string().optional(),
       grammar_vn: z.string().optional(),
       context: z.string().optional(),
+      partOfSpeech: z.enum(['noun', 'verb', 'adjective', 'adverb', 'preposition', 'pronoun', 'conjunction', 'phrase']).optional(),
+      audioFileId: z.string().optional(),
       isProcessed: z.boolean().optional(),
     },
     async ({ id, ...fields }) => {

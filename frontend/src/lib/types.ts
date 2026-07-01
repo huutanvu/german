@@ -40,6 +40,8 @@ export interface VocabularyFields {
   professionalUseTokensJson_vn?: string;
   context?: string;
   isProcessed?: boolean;
+  partOfSpeech?: 'noun' | 'verb' | 'adjective' | 'adverb' | 'preposition' | 'pronoun' | 'conjunction' | 'phrase';
+  audioFileId?: string;
   updatedAt?: string;
   userId?: string;
 }

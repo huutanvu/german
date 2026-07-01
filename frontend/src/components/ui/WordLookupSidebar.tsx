@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getVocabularyByWord, createVocabulary } from "@/lib/grist";
+import { getVocabularyByWord, createVocabulary, getReviewsForWord, addWordToCollection, updateVocabulary } from "@/lib/grist";
 import { useLanguage } from "@/lib/language-context";
 import type { Vocabulary } from "@/lib/types";
+import { UploadVocabAudioButton } from "./UploadVocabAudioButton";
 
 interface WordLookupSidebarProps {
   isOpen: boolean;
@@ -74,8 +75,11 @@ export function WordLookupSidebar({
   const { language, t } = useLanguage();
   const [vocabItem, setVocabItem] = useState<Vocabulary | null>(null);
   const [loading, setLoading] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [addingToCollection, setAddingToCollection] = useState(false);
+  const [inCollection, setInCollection] = useState(false);
+  const [checkingCollection, setCheckingCollection] = useState(false);
   const [added, setAdded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Tokens to highlight in the sentence (clicked word + separable prefix if any)
   const highlightTokens = [
@@ -84,43 +88,78 @@ export function WordLookupSidebar({
   ];
 
   useEffect(() => {
+    async function checkAdmin() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.userId === 'd68f7a67-42fb-43b2-a1c7-1108eb99150a');
+        }
+      } catch (err) {
+        console.error("Failed to check admin status:", err);
+      }
+    }
+    checkAdmin();
+  }, []);
+
+  useEffect(() => {
     if (!isOpen || !word) return;
 
     async function lookup() {
       setLoading(true);
       setAdded(false);
       setVocabItem(null);
+      setInCollection(false);
       try {
         const item = await getVocabularyByWord([word]);
         setVocabItem(item);
+        if (item) {
+          setCheckingCollection(true);
+          const reviews = await getReviewsForWord(item.id);
+          const hasPending = reviews.some(r => r.fields.status === 'pending_correction');
+          setInCollection(hasPending);
+        }
       } catch (err) {
         console.error("Failed to fetch vocabulary word:", err);
       } finally {
         setLoading(false);
+        setCheckingCollection(false);
       }
     }
 
     lookup();
   }, [isOpen, word, sentence]);
 
-  async function handleAddToQueue() {
+  async function handleAddToCollection() {
     if (!word) return;
-    setAdding(true);
+    setAddingToCollection(true);
     try {
-      await createVocabulary({
-        word,
-        type: "new",
-        level: "B1",
-        meanings: "",
-        grammar: "",
-        isProcessed: false,
-      });
+      let vocabId = vocabItem?.id;
+      if (!vocabId) {
+        // Word not in global dictionary yet, create it globally first
+        const res = await createVocabulary({
+          word,
+          type: "new",
+          level: "B1",
+          meanings: "",
+          grammar: "",
+          isProcessed: false,
+        });
+        vocabId = res.records[0].id;
+        // Fetch it again to update UI
+        const item = await getVocabularyByWord([word]);
+        setVocabItem(item);
+      }
+      
+      // Add to personal collection/reviews
+      await addWordToCollection(vocabId);
+      setInCollection(true);
       setAdded(true);
       if (onWordAdded) onWordAdded();
     } catch (err) {
-      console.error("Failed to add word to vocabulary queue:", err);
+      console.error("Failed to add word to collection:", err);
     } finally {
-      setAdding(false);
+      setAddingToCollection(false);
     }
   }
 
@@ -202,15 +241,94 @@ export function WordLookupSidebar({
             </div>
           ) : vocabItem ? (
             <div className="space-y-6">
-              {/* Word title & level */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100">
-                  {vocabItem.fields.word}
-                </h3>
-                <span className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded">
-                  {vocabItem.fields.level} | {vocabItem.fields.type}
-                </span>
+              {/* Word title & details */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100">
+                      {vocabItem.fields.word}
+                    </h3>
+                    <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded">
+                      {vocabItem.fields.level}
+                    </span>
+                    {vocabItem.fields.audioFileId && (
+                      <button
+                        onClick={() => {
+                          const audio = new Audio(`https://media.publit.io/file/german/${vocabItem.fields.audioFileId}.mp3`);
+                          audio.play().catch(err => console.error("Failed to play pronunciation audio:", err));
+                        }}
+                        className="p-1 text-gray-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+                        title={t("Listen", "Nghe")}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {vocabItem.fields.partOfSpeech && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium italic">
+                      {vocabItem.fields.partOfSpeech}
+                    </p>
+                  )}
+                </div>
+
+                {/* Small icon button for reviews */}
+                <div className="shrink-0">
+                  {inCollection ? (
+                    <div 
+                      className="p-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 rounded-lg border border-emerald-200 dark:border-emerald-900/40 shadow-xs" 
+                      title={t("In Reviews", "Đang ôn tập")}
+                    >
+                      <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleAddToCollection}
+                      disabled={addingToCollection || checkingCollection}
+                      className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors cursor-pointer shadow-sm disabled:opacity-50 flex items-center justify-center"
+                      title={t("Add to review", "Learn")}
+                    >
+                      {addingToCollection ? (
+                        <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Audio upload controls for admin */}
+              {isAdmin && (
+                <div className="bg-gray-50 dark:bg-slate-950/50 p-3 rounded-lg border border-gray-100 dark:border-slate-800 shadow-2xs">
+                  <span className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 block mb-1">
+                    {t("Upload Audio (Admin)", "Tải lên phát âm (Admin)")}
+                  </span>
+                  <UploadVocabAudioButton
+                    vocabId={vocabItem.id}
+                    wordName={vocabItem.fields.word}
+                    onUploadSuccess={(newAudioId) => {
+                      setVocabItem(prev => prev ? {
+                        ...prev,
+                        fields: {
+                          ...prev.fields,
+                          audioFileId: newAudioId
+                        }
+                      } : null);
+                    }}
+                  />
+                </div>
+              )}
+
+
 
               {/* Unprocessed banner */}
               {!vocabItem.fields.meanings && (
@@ -304,7 +422,7 @@ export function WordLookupSidebar({
                   )}
                 </p>
               </div>
-              {added ? (
+              {added || inCollection ? (
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs p-3 rounded border border-emerald-200 dark:border-emerald-900/40 font-semibold italic">
                   {t(
                     "Added to review queue! Detail contents will be generated offline.",
@@ -313,13 +431,13 @@ export function WordLookupSidebar({
                 </div>
               ) : (
                 <button
-                  onClick={handleAddToQueue}
-                  disabled={adding}
+                  onClick={handleAddToCollection}
+                  disabled={addingToCollection}
                   className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 text-sm font-bold rounded cursor-pointer disabled:opacity-50 transition-colors"
                 >
-                  {adding
+                  {addingToCollection
                     ? t("Adding to library...", "Đang thêm vào kho từ vựng...")
-                    : t("Add to Review Queue", "Thêm vào Hàng đợi Ôn tập")}
+                    : t("Add to review", "Learn")}
                 </button>
               )}
             </div>

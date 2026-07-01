@@ -35,6 +35,8 @@ Holds the user's vocabulary list.
 - `caution_vn` (Text): Common pitfalls or false friends in Vietnamese
 - `context` (Text): Sentence context where this word was captured in the UI
 - `isProcessed` (Bool): Flag indicating if this word has been processed and populated by the AI
+- `partOfSpeech` (Choice: noun, verb, adjective, adverb, preposition, pronoun, conjunction, phrase)
+- `audioFileId` (Text): Publitio file ID of pronunciation audio
 - `updatedAt` (DateTime)
 
 ### Table 3: `VocabularyReviews`
@@ -141,13 +143,13 @@ When executing a correction or generation task:
 
 1. **Daily Review Processing**:
    - Query `list_reviews` where `status = "pending_correction"`.
-   - For each review: check the user's sentence, provide spelling/grammar/style feedback, determine if correct, increment or reset `correctCount` in `Vocabulary`, and call `update_review` to save results in both English (`correctionFeedback`) and Vietnamese (`correctionFeedback_vn`), changing status to `corrected` or `failed`.
+   - For each review: check the `userSentence` field. If it is empty, blank, or contains only whitespace, skip it. Otherwise, check the user's sentence, provide spelling/grammar/style feedback, determine if correct, increment or reset `correctCount` in `Vocabulary`, and call `update_review` to save results in both English (`correctionFeedback`) and Vietnamese (`correctionFeedback_vn`), changing status to `corrected` or `failed`.
 2. **Vocabulary Capture & Stemming Processing**:
    - Query `Vocabulary` records where `isProcessed = false`.
    - For each record:
      - Read the raw clicked `word` and the context.
      - Analyze context sentence to resolve the correct dictionary base form.
-     - Update Grist fields with meanings, grammar notes, daily and professional example sentences, tips, and cautions in both English and Vietnamese (populating both the normal columns and the `_vn` columns).
+     - Update Grist fields with meanings, grammar notes, partOfSpeech category (Choice: noun, verb, adjective, adverb, preposition, pronoun, conjunction, phrase), daily and professional example sentences, tips, and cautions in both English and Vietnamese (populating both the normal columns and the `_vn` columns).
      - Set `isProcessed` to `true` and update the Grist record.
 3. **Writing Corrections**:
    - Query `list_writing_practice` where `status = "pending_correction"`.

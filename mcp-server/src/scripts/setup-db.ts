@@ -109,6 +109,8 @@ const tablesToCreate = [
           { id: 'dailyUseTokensJson_vn', fields: { type: 'Text', label: 'Daily Use Tokens JSON (VN)' } },
           { id: 'professionalUseTokensJson', fields: { type: 'Text', label: 'Professional Use Tokens JSON' } },
           { id: 'professionalUseTokensJson_vn', fields: { type: 'Text', label: 'Professional Use Tokens JSON (VN)' } },
+          { id: 'partOfSpeech', fields: { type: 'Choice', label: 'Part of Speech', widgetOptions: JSON.stringify({ choices: ['noun', 'verb', 'adjective', 'adverb', 'preposition', 'pronoun', 'conjunction', 'phrase'] }) } },
+          { id: 'audioFileId', fields: { type: 'Text', label: 'Audio File ID' } },
           { id: 'updatedAt', fields: { type: 'DateTime', label: 'Updated At' } },
         ],
       },

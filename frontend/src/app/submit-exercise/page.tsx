@@ -135,41 +135,41 @@ export default function SubmitExercisePage() {
   const compileAnnotatedText = (seqTokens: any[]) => {
     let text = "";
     let currentPos = 0;
-    
+
     let isBold = false;
     let isItalic = false;
-    
+
     const tempTokens: any[] = [];
-    
+
     for (let i = 0; i < seqTokens.length; i++) {
       const st = seqTokens[i];
       const t = st.t || "";
-      
+
       // Check if this is a bold toggle (double asterisks/underscores)
       if (t === "**" || t === "__") {
         isBold = !isBold;
         continue;
       }
-      
+
       // Check if it is two adjacent single asterisks/underscores representing bold
       if ((t === "*" && i + 1 < seqTokens.length && seqTokens[i + 1].t === "*") ||
-          (t === "_" && i + 1 < seqTokens.length && seqTokens[i + 1].t === "_")) {
+        (t === "_" && i + 1 < seqTokens.length && seqTokens[i + 1].t === "_")) {
         isBold = !isBold;
         i++; // skip next asterisk
         continue;
       }
-      
+
       // Check if this is an italic toggle (single asterisk/underscore)
       if (t === "*" || t === "_") {
         isItalic = !isItalic;
         continue;
       }
-      
+
       // Check if the token text itself is wrapped in bold/italic (e.g. "**Quellcode**")
       let cleanText = t;
       let tokenBold = isBold;
       let tokenItalic = isItalic;
-      
+
       if ((cleanText.startsWith("**") && cleanText.endsWith("**")) || (cleanText.startsWith("__") && cleanText.endsWith("__"))) {
         tokenBold = true;
         cleanText = cleanText.slice(2, -2);
@@ -177,12 +177,12 @@ export default function SubmitExercisePage() {
         tokenItalic = true;
         cleanText = cleanText.slice(1, -1);
       }
-      
+
       const start = currentPos;
       const end = currentPos + cleanText.length;
       text += cleanText;
       currentPos = end;
-      
+
       tempTokens.push({
         index: tempTokens.length, // temporary index
         text: cleanText,
@@ -194,7 +194,7 @@ export default function SubmitExercisePage() {
         italic: tokenItalic
       });
     }
-    
+
     const sepMap = new Map<number, number>();
     tempTokens.forEach((t, idx) => {
       t.index = idx;
@@ -204,7 +204,7 @@ export default function SubmitExercisePage() {
         }
       }
     });
-    
+
     const finalTokens: any[] = [];
     tempTokens.forEach((t) => {
       if (t.sepId !== undefined) {
@@ -227,11 +227,11 @@ export default function SubmitExercisePage() {
         italic: t.italic || undefined
       });
     });
-    
+
     finalTokens.forEach((t, idx) => {
       t.index = idx;
     });
-    
+
     return {
       text,
       tokens: finalTokens
@@ -277,7 +277,7 @@ export default function SubmitExercisePage() {
           parsed.germanText = compiled.text;
           parsed.tokensJson = JSON.stringify(compiled);
         }
-      } catch {}
+      } catch { }
     }
 
     // Process Speaking practice tokens
@@ -298,7 +298,7 @@ export default function SubmitExercisePage() {
           parsed.targetText = compiled.text;
           parsed.targetTokensJson = JSON.stringify(compiled);
         }
-      } catch {}
+      } catch { }
     }
 
     setSubmitting(true);
@@ -321,6 +321,7 @@ export default function SubmitExercisePage() {
 Generate a German reading practice exercise tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
 
 Before writing, please search/research the latest news and actual developments regarding the selected topic within this professional field. The German reading passage must be based on actual, real-world current news events or factual reports rather than being generic or fictional.
+Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
@@ -389,12 +390,13 @@ CRITICAL:
 3. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). All placeholders must be fully generated.
 4. The "topic" field value MUST be written in German.
 5. The "germanText" must be at least 2 paragraphs long and MUST be strictly based on current news facts related to this topic.
-6. The output must be a downloadable JSON file.`;
+`;
     }
 
     if (type === 'writing') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German writing practice topic tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
@@ -407,12 +409,13 @@ Provide the output as a single, valid JSON object matching this schema:
 
 CRITICAL: 
 1. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.
-2. The output must be a downloadable JSON file.`;
+`;
     }
 
     if (type === 'speaking') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German speaking practice prompt tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
@@ -462,12 +465,13 @@ The tokens list MUST be:
 CRITICAL: 
 1. The targetTokensJson must be a raw JSON object (not stringified or escaped). We stringify it later.
 2. The output must be pure JSON with NO markdown code blocks (fences like \`\`\`json) and NO comments or ellipsis (...). The "topic" field value MUST be written in German.
-3. The output must be a downloadable JSON file.`;
+`;
     }
 
     // grammar
     return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German grammar practice drill tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
@@ -499,7 +503,7 @@ CRITICAL:
 4. The "topic" field value MUST be written in German.
 5. The "fill_in_gap" question must always provide a list of options, 1 of them must be the correct_answer.
 6. The question_vn field must only translate the English parts of the question, keeping all German words and sentences intact (e.g. Is this sentence grammatically correct? "Ich bin Anna" becomes Câu này có đúng ngữ pháp không? "Ich bin Anna").
-7. The output must be a downloadable JSON file.`;
+`;
   };
 
   const handleCopyPrompt = () => {
@@ -567,8 +571,8 @@ CRITICAL:
                       type="button"
                       onClick={() => handleTypeChange(t)}
                       className={`py-2 px-3 text-xs font-bold rounded-lg border capitalize transition-all cursor-pointer ${type === t
-                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/10'
-                          : 'bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-900'
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-500/10'
+                        : 'bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-900'
                         }`}
                     >
                       {t}
@@ -619,8 +623,8 @@ CRITICAL:
               {message && (
                 <div
                   className={`p-3.5 border rounded-xl text-xs font-semibold leading-relaxed ${message.isError
-                      ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400'
-                      : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400'
+                    ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400'
+                    : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400'
                     }`}
                 >
                   {message.isError ? '❌' : '✅'} {message.text}
@@ -740,8 +744,8 @@ CRITICAL:
             <button
               onClick={handleCopyPrompt}
               className={`absolute top-4 right-4 p-2 rounded-lg border transition-all cursor-pointer ${copied
-                  ? 'bg-emerald-600 border-emerald-600 text-white'
-                  : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+                ? 'bg-emerald-600 border-emerald-600 text-white'
+                : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
                 }`}
               title="Copy prompt"
             >

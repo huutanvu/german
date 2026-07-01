@@ -208,6 +208,7 @@ Provide the response as a JSON object matching this schema:
   "meanings": "English translations/meanings separated by commas",
   "meanings_vn": "Vietnamese translations/meanings separated by commas",
   "level": "German CEFR Level (Choice: A1, A2, B1, B2, C1, C2)",
+  "partOfSpeech": "Word type (Choice: 'noun', 'verb', 'adjective', 'adverb', 'preposition', 'pronoun', 'conjunction', 'phrase')",
   "grammar": "Article, plural form (for nouns), aux verb + past participle (for verbs), prepositions (for adjectives), etc. in English",
   "grammar_vn": "Grammatical notes explained in Vietnamese",
   "usages": [
@@ -342,6 +343,7 @@ async function main() {
         level: result.level || "B1",
         grammar: result.grammar,
         grammar_vn: result.grammar_vn,
+        partOfSpeech: result.partOfSpeech,
       };
 
       await updateGrist(record.id, updatePayload);
