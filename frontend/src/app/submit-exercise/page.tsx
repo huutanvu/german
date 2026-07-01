@@ -64,6 +64,7 @@ const SAMPLES = {
 };
 
 const PROFESSIONS = [
+  { slug: '', label: 'All / Shared (Visible to everyone)' },
   { slug: 'software_engineer', label: 'Software Engineer' },
   { slug: 'healthcare_professional', label: 'Healthcare Professional' },
   { slug: 'nurse', label: 'Nurse / Pflegekraft' },
@@ -315,20 +316,28 @@ export default function SubmitExercisePage() {
   // Generate the AI Prompt based on selected type, profession and level
   const generatePromptText = () => {
     const profLabel = PROFESSIONS.find(p => p.slug === promptProfession)?.label || promptProfession;
+    const sharedNote = promptProfession === ""
+      ? "Since the profession slug is empty (\"\"), this exercise is a shared/general topic for everyone. Do NOT tailor it to a specific profession; make it general, universally applicable, and suitable for all learners."
+      : `Make the content specifically relevant to the professional field of a ${profLabel}.`;
+
+    const newsResearchDirective = promptProfession === ""
+      ? "CRITICAL REQUIREMENT: Before generating the content, you must search and research the latest daily news, actual developments, or factual reports suitable for all audiences (general context). The German text and sentences must be strictly based on actual, real-world factual reports retrieved from reliable newspapers, websites, or forums. Do NOT use fake, generic, or fictional news."
+      : `CRITICAL REQUIREMENT: Before generating the content, you must search and research the latest daily news, actual developments, or factual reports related specifically to the professional field of a "${profLabel}" (profession slug: "${promptProfession}"). The German text and sentences must be strictly based on actual, real-world current news events or factual reports retrieved from reliable newspapers, websites, or forums within this professional field. Do NOT use fake, generic, or fictional news.`;
 
     if (type === 'reading') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German reading practice exercise tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
 
-Before writing, please search/research the latest news and actual developments regarding the selected topic within this professional field. The German reading passage must be based on actual, real-world current news events or factual reports rather than being generic or fictional.
+${sharedNote}
+${newsResearchDirective}
 Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
-  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
-  "germanText": "[A German reading passage of 250-350 words based on the researched news, structured in at least 2 paragraphs.]",
+  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese]",
+  "germanText": "[A German reading passage of 250-350 words, structured in at least 2 paragraphs.]",
   "tokensJson": {
     "tokens": [
       { "t": "Bei", "type": "word", "lemma": "bei" },
@@ -396,13 +405,16 @@ CRITICAL:
     if (type === 'writing') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German writing practice topic tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+
+${sharedNote}
+${newsResearchDirective}
 Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
-  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
+  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese]",
   "description": "[A detailed description and instructions in English guiding the user on what to write in German, specifying grammar/lexical goals]",
   "description_vn": "[A detailed description and instructions in Vietnamese guiding the user on what to write in German, specifying grammar/lexical goals]"
 }
@@ -415,13 +427,16 @@ CRITICAL:
     if (type === 'speaking') {
       return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German speaking practice prompt tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+
+${sharedNote}
+${newsResearchDirective}
 Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
-  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
+  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese]",
   "targetText": "[A natural German sentence or short paragraph representing a speaking or dialogue prompt for the user to read out loud]",
   "targetTokensJson": {
     "tokens": [
@@ -471,13 +486,16 @@ CRITICAL:
     // grammar
     return `You are a German language teacher fluent in English and Vietnamese.
 Generate a German grammar practice drill tailored for a "${profLabel}" at level "${promptLevel}" (profession slug: "${promptProfession}", level: "${promptLevel}").
+
+${sharedNote}
+${newsResearchDirective}
 Return a downloadable json file, do not print to the user.
 
 Provide the output as a single, valid JSON object matching this schema:
 {
   "profession": "${promptProfession}",
   "level": "${promptLevel}",
-  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese, matching this professional context]",
+  "topic": "[Choose a unique topic title in German, NOT English or Vietnamese]",
   "description": "[Short grammar guidelines/explanation in English]",
   "description_vn": "[Short grammar guidelines/explanation in Vietnamese]",
   "questionsJson": [

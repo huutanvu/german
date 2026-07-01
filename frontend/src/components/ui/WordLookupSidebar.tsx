@@ -358,7 +358,7 @@ export function WordLookupSidebar({
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
                     {t("Grammar", "Ngữ pháp")}
                   </h4>
-                  <p className="text-xs text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 whitespace-pre-wrap">
+                  <p className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 whitespace-pre-wrap">
                     {grammarVal}
                   </p>
                 </div>
@@ -370,16 +370,16 @@ export function WordLookupSidebar({
                   {t("Example Sentences", "Câu ví dụ")}
                 </h4>
                 {dailyUseVal && (
-                  <div className="text-xs bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 space-y-1">
-                    <span className="font-semibold text-gray-500 dark:text-slate-400">
+                  <div className="text-sm bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 space-y-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400 block">
                       {t("Daily context", "Ngữ cảnh hàng ngày")}
                     </span>
                     <p className="text-gray-900 dark:text-gray-200 italic">"{dailyUseVal}"</p>
                   </div>
                 )}
                 {professionalUseVal && (
-                  <div className="text-xs bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 space-y-1">
-                    <span className="font-semibold text-gray-500 dark:text-slate-400">
+                  <div className="text-sm bg-gray-50 dark:bg-slate-950 p-3 rounded border border-gray-100 dark:border-slate-800 space-y-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400 block">
                       {t("Professional context", "Ngữ cảnh công việc")}
                     </span>
                     <p className="text-gray-900 dark:text-gray-200 italic">"{professionalUseVal}"</p>
@@ -391,7 +391,7 @@ export function WordLookupSidebar({
               {(tipsVal || cautionVal) && (
                 <div className="space-y-3 pt-2">
                   {tipsVal && (
-                    <div className="text-xs bg-emerald-50/50 dark:bg-emerald-950/10 p-3 rounded border border-emerald-200 dark:border-emerald-950/20">
+                    <div className="text-sm bg-emerald-50/50 dark:bg-emerald-950/10 p-3 rounded border border-emerald-200 dark:border-emerald-950/20">
                       <strong className="text-emerald-800 dark:text-emerald-300 block mb-1">
                         {t("Tips", "Mẹo học")}
                       </strong>
@@ -399,7 +399,7 @@ export function WordLookupSidebar({
                     </div>
                   )}
                   {cautionVal && (
-                    <div className="text-xs bg-red-50/50 dark:bg-red-950/10 p-3 rounded border border-red-200 dark:border-red-950/20">
+                    <div className="text-sm bg-red-50/50 dark:bg-red-950/10 p-3 rounded border border-red-200 dark:border-red-950/20">
                       <strong className="text-red-800 dark:text-red-300 block mb-1">
                         {t("Caution / Pitfall", "Lưu ý / Lỗi thường gặp")}
                       </strong>

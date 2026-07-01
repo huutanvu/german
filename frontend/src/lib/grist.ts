@@ -519,7 +519,7 @@ export async function listWritingPractices(
   const userProfession = profile.profession;
   const userLevel = profile.targetLevel;
 
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession, "", null] }))}`;
   const templates = await gristGet<GristResponse<WritingPracticeFields>>(`/tables/WritingPractice/records${query}`);
 
   // Filter templates locally by level <= userLevel
@@ -642,7 +642,7 @@ export async function listReadingPractices(
   const userProfession = profile.profession;
   const userLevel = profile.targetLevel;
 
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession, "", null] }))}`;
   const templates = await gristGet<GristResponse<ReadingPracticeFields>>(`/tables/ReadingPractice/records${query}`);
 
   // Filter templates locally by level <= userLevel
@@ -761,7 +761,7 @@ export async function listGrammarPractices(
   const userProfession = profile.profession;
   const userLevel = profile.targetLevel;
 
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession, "", null] }))}`;
   const templates = await gristGet<GristResponse<GrammarPracticeFields>>(`/tables/GrammarPractice/records${query}`);
 
   // Filter templates locally by level <= userLevel
@@ -880,7 +880,7 @@ export async function listSpeakingPractices(
   const userProfession = profile.profession;
   const userLevel = profile.targetLevel;
 
-  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession] }))}`;
+  const query = `?filter=${encodeURIComponent(JSON.stringify({ profession: [userProfession, "", null] }))}`;
   const templates = await gristGet<GristResponse<SpeakingPracticeFields>>(`/tables/SpeakingPractice/records${query}`);
 
   // Filter templates locally by level <= userLevel
