@@ -1292,6 +1292,15 @@ Provide the response as a JSON object matching this schema:
 
   const parsed = safeJsonParse(replyText);
 
+  const cleanWord = parsed.word.trim();
+  const existingRes = await gristGet<GristResponse<VocabularyFields>>(
+    `/tables/Vocabulary/records?filter=${encodeURIComponent(JSON.stringify({ word: [cleanWord] }))}`
+  );
+  if (existingRes.records && existingRes.records.length > 0) {
+    console.log(`Word "${cleanWord}" already exists in Vocabulary. Returning existing record.`);
+    return existingRes.records[0];
+  }
+
   const gristRes = await createVocabulary({
     word: parsed.word,
     meanings: parsed.meanings,
